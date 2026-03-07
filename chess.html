@@ -1,0 +1,2022 @@
+<html>
+     <head>
+	 <meta charset="Utf-8">
+     <link rel="icon" type="image/png" href="/favicon.png" sizes="32x32" />
+	<title>Шахматы</title>
+    
+	<style>
+	html,
+	body {
+	height: 100%;
+	margin: 0;
+	}
+	body {
+    font-family: Arial, 'Segoe UI', sans-serif;
+	background: black;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	touch-action: none;
+    
+	}
+	canvas{
+	border: 1px solid white;
+	}
+    .modal {
+            display: none; /* Скрыто по умолчанию */
+            position: fixed;
+            z-index: 1; /* На переднем плане */
+            left: 0;
+            top: 0;
+            width: 100vw; /* Полная ширина */
+            height: 100vh; /* Полная высота */
+            overflow: auto; /* Включаем прокрутку, если необходимо */
+            background-color: rgba(0, 0, 0, 0.2); /* Черный фон с прозрачностью */
+        }
+
+        .modal-content {
+            position: absolute; 
+         
+            background-color: rgba(0, 0, 0, 0.75);
+            top: 50vh; /* Отступ сверху */
+            width: 100vw; /* Ширина */
+            transform: translate(0%, -50%);
+            text-align: center; /* По центру текст */
+        }
+            button {
+        background-color: transparent;
+        border: none;
+        color: #fff;
+        cursor: pointer;
+    }
+
+        /* Нажатие на кнопку */
+        button:hover {
+            background-color: rgba(0, 0, 0, 0.9);
+        }
+        .rotated {
+    transform: rotate(180deg);
+}
+
+	</style>
+      </head>
+
+<body>
+<canvas  id='game'></canvas>
+<div id="myModal" class="modal">
+    <div class="modal-content">
+        <button id="btnQ" onclick="promotePawn('Q')">♛</button>
+        <button id="btnR" onclick="promotePawn('R')">♖</button>
+        <button id="btnB" onclick="promotePawn('B')">♗</button>
+        <button id="btnN" onclick="promotePawn('N')">♞</button>
+    </div>
+</div>
+<script>
+var canvas = document.getElementById('game');
+var context = canvas.getContext('2d');
+
+
+var grid;
+
+
+
+if (document.documentElement.clientWidth > document.documentElement.clientHeight){
+
+grid = Math.floor((document.documentElement.clientHeight - 16) / 8);
+
+}else {
+grid = Math.floor((document.documentElement.clientWidth - 16 ) / 8);
+
+}
+function updateButtonSizes() {
+         
+
+            // Изменяем размеры кнопок
+            var buttons = document.querySelectorAll('.modal-content button');
+            buttons.forEach(function(button) {
+                button.style.width = grid + 'px';
+                button.style.height = grid + 'px';
+                button.style.margin = grid/5 + 'px';
+                button.style.fontSize = grid*3/4 + 'px';
+                if (r === 1) {
+                button.style.color = '#FF6600' 
+                } else {
+                    button.style.color = '#CC66FF' 
+                }
+                if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+                if (r === 1) {
+                buttons.forEach(button => {
+                    button.classList.add('rotated');
+                });
+            } else {
+                buttons.forEach(button => {
+                    button.classList.remove('rotated');
+                });
+            }
+        } else {
+            buttons.forEach(button => {
+                    button.classList.remove('rotated');
+                });
+        }
+
+
+            });
+
+        }
+
+        // Вызываем функцию при загрузке страницы
+
+       
+    
+        
+//Поле /////////////////
+
+
+canvas.width =  8 * grid;
+canvas.height = 8 * grid;
+
+// Обновляем стили модального окна
+
+function killf(){
+if ((y % 2 == 0 && x % 2 == 0) || (y % 2 !== 0 && x % 2 !== 0)){
+context.fillStyle = '#FFF';
+context.fillRect( x * grid,  y * grid, grid, grid);
+} else {
+context.fillStyle = '#000';
+context.fillRect( x * grid,  y * grid, grid, grid);
+}
+}
+var gameOver = false;
+var cho = false;
+var px = 0
+var py = 0
+var r = 0;
+function showPromotionModal() {
+            document.getElementById('myModal').style.display = 'block';
+        }
+
+        function hidePromotionModal() {
+            document.getElementById('myModal').style.display = 'none';
+            
+            mat()
+        }
+
+        function promotePawn(pieceType) {
+             if (!gameOver) {
+            // Удаляем модальное окно
+            hidePromotionModal();
+            
+            var y = px; // Замените это на координаты вашей пешки
+            var x = py; // Замените это на координаты вашей пешки
+            context.font = grid + 'px Courier New';
+            
+           
+            switch (pieceType) {
+                case 'Q': // Ферзь
+                killf()
+                  r = (r + 1) % 2;
+           mat();
+                cho = false
+                
+                if(r==1){ 
+            context.fillStyle = '#CC66FF'; // Цвет фигуры
+            } else {
+                context.fillStyle = '#FF6600';
+            }
+                if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+                    if(r==1){ 
+                        context.fillText('\u2655', x * grid + grid / 2, grid + y * grid);
+                    }else { 
+                    context.save();
+                    // Сначала перемещаем контекст в нужную позицию
+                    context.translate(x * grid + grid / 2, y * grid);
+                    // Затем переворачиваем по оси Y
+                    context.scale(1, -1);
+                        context.fillText('\u265B', 0, 0);
+                        context.restore();
+                    }
+                } else {
+                    if(r==1){ 
+                    context.fillText('\u2655', x * grid + grid / 2, grid + y * grid);
+                    } else {
+                    context.fillText('\u265B', x * grid + grid / 2, grid + y * grid);
+                    }
+                }
+                    
+                    if(r==1){ 
+                        a[y][x] = 11
+                    }else{
+                        a[y][x] = 5    
+                    }
+                    break;
+                case 'R': // Ладья
+                killf()
+                  r = (r + 1) % 2;
+           mat();
+                cho = false
+                
+                if(r==1){ 
+            context.fillStyle = '#CC66FF'; // Цвет фигуры
+            } else {
+                context.fillStyle = '#FF6600';
+            }
+                  if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+                    if(r==1){ 
+                        context.fillText('\u2656', x * grid + grid / 2, grid + y * grid);
+                    }else { 
+                    context.save();
+                    // Сначала перемещаем контекст в нужную позицию
+                    context.translate(x * grid + grid / 2, y * grid);
+                    // Затем переворачиваем по оси Y
+                    context.scale(1, -1);
+                        context.fillText('\u265C', 0, 0);
+                        context.restore();
+                    }
+                } else {
+                    if(r==1){ 
+                    context.fillText('\u2656', x * grid + grid / 2, grid + y * grid);
+                    } else {
+                    context.fillText('\u265C', x * grid + grid / 2, grid + y * grid);
+                    }
+                }
+                    if(r==1){ 
+                        a[y][x] = 8
+                    }else{
+                        a[y][x] = 2    
+                    }
+                    break;
+                case 'B': // Слон
+                killf()
+                  r = (r + 1) % 2;
+           mat();
+                cho = false
+                
+                if(r==1){ 
+            context.fillStyle = '#CC66FF'; // Цвет фигуры
+            } else {
+                context.fillStyle = '#FF6600';
+            }
+                if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+                    if(r==1){ 
+                        context.fillText('\u2657', x * grid + grid / 2, grid + y * grid);
+                    }else { 
+                    context.save();
+                    // Сначала перемещаем контекст в нужную позицию
+                    context.translate(x * grid + grid / 2, y * grid);
+                    // Затем переворачиваем по оси Y
+                    context.scale(1, -1);
+                        context.fillText('\u265D', 0, 0);
+                        context.restore();
+                    }
+                } else {
+                    if(r==1){ 
+                    context.fillText('\u2657', x * grid + grid / 2, grid + y * grid);
+                    } else {
+                    context.fillText('\u265D', x * grid + grid / 2, grid + y * grid);
+                    }
+                }
+                    if(r==1){ 
+                        a[y][x] = 10
+                    }else{
+                        a[y][x] = 4    
+                    }
+                    break;
+                case 'N': // Конь
+                killf()
+                  r = (r + 1) % 2;
+           mat();
+                cho = false
+                
+                if(r==1){ 
+            context.fillStyle = '#CC66FF'; // Цвет фигуры
+            } else {
+                context.fillStyle = '#FF6600';
+            }
+                if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+                    if(r==1){ 
+                        context.fillText('\u2658', x * grid + grid / 2, grid + y * grid);
+                    }else { 
+                    context.save();
+                    // Сначала перемещаем контекст в нужную позицию
+                    context.translate(x * grid + grid / 2, y * grid);
+                    // Затем переворачиваем по оси Y
+                    context.scale(1, -1);
+                        context.fillText('\u265E', 0, 0);
+                        context.restore();
+                    }
+                } else {
+                    if(r==1){ 
+                    context.fillText('\u2658', x * grid + grid / 2, grid + y * grid);
+                    } else {
+                    context.fillText('\u265E', x * grid + grid / 2, grid + y * grid);
+                    }
+                }
+                    if(r==1){ 
+                        a[y][x] = 9
+                    }else{
+                        a[y][x] = 3    
+                    }
+                    break;
+            }
+
+             
+    
+    // Только после проверки мата меняем ход, если игра не окончена
+   mat();
+      
+    }
+        }
+
+        // Пример вызова модального окна, когда пешка достигает края доски
+        function onPawnPromotion() {
+            showPromotionModal();
+            updateButtonSizes();
+           
+// Вызываем функцию при изменении размера окна
+window.addEventListener('resize', updateButtonSizes);
+        }
+
+
+
+
+
+var sten = {
+x: -grid,
+y: -grid,
+};
+
+var s = 0 ;
+
+
+for (let i = 0; i < 8; i++){
+  
+ 
+for (let j = 0; j < 8; j++){
+
+
+
+s ++; 
+if ((s % 2 == 0 && i % 2 == 0) || (s % 2 !== 0 && i % 2 !== 0)){
+
+context.fillStyle = '#000';
+context.fillRect(i * grid, j * grid, grid, grid);
+
+} else {
+context.fillStyle = '#fff';
+
+context.fillRect(i * grid, j * grid, grid, grid);
+}
+
+
+
+}
+
+}
+
+context.textAlign = 'center';
+// Добавляем функцию проверки мата
+function isCheckmate(kingX, kingY, board, currentPlayer) {
+    // Если король не под шахом, то это не мат
+    if (!isKingInCheck(kingX, kingY, board)) {
+        return false;
+    }
+    
+    // Проверяем все возможные ходы для всех фигур текущего игрока
+    for (let fromX = 0; fromX < 8; fromX++) {
+        for (let fromY = 0; fromY < 8; fromY++) {
+            const piece = board[fromX][fromY];
+            
+            // Проверяем только фигуры текущего игрока
+            if (currentPlayer === 0 && piece >= 7 && piece <= 12.5) {
+                // Белые фигуры (фиолетовые)
+                for (let toX = 0; toX < 8; toX++) {
+                    for (let toY = 0; toY < 8; toY++) {
+                        if (canMoveWithoutCheck(fromX, fromY, toX, toY, board, currentPlayer, kingX, kingY)) {
+                            return false; // Найден ход, уводящий из-под шаха
+                        }
+                    }
+                }
+            } else if (currentPlayer === 1 && piece >= 1 && piece <= 6) {
+                // Черные фигуры (оранжевые)
+                for (let toX = 0; toX < 8; toX++) {
+                    for (let toY = 0; toY < 8; toY++) {
+                        if (canMoveWithoutCheck(fromX, fromY, toX, toY, board, currentPlayer, kingX, kingY)) {
+                            return false; // Найден ход, уводящий из-под шаха
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    return true; // Ни одного хода не найдено - мат
+}
+function canMoveWithoutCheck(fromX, fromY, toX, toY, board, currentPlayer, kingX, kingY) {
+    const piece = board[fromX][fromY];
+    
+    // Пропускаем пустые клетки
+    if (piece === 0) return false;
+    
+    // Проверяем принадлежность фигуры
+    if (currentPlayer === 0 && !(piece >= 7 && piece <= 12.5)) return false;
+    if (currentPlayer === 1 && !(piece >= 1 && piece <= 6)) return false;
+    
+    // Проверяем базовые правила движения
+    if (!canAttack(fromX, fromY, toX, toY, board)) return false;
+    
+    // Проверяем, не съедаем ли свою фигуру
+    const targetPiece = board[toX][toY];
+    if (targetPiece !== 0) {
+        if (currentPlayer === 0 && targetPiece >= 7 && targetPiece <= 12.5) return false;
+        if (currentPlayer === 1 && targetPiece >= 1 && targetPiece <= 6) return false;
+    }
+    
+    // Для фигур, которым нужен свободный путь
+    if (piece === 2 || piece === 2.5 || piece === 8 || piece === 8.5 || 
+        piece === 4 || piece === 10 || piece === 5 || piece === 11) {
+        if (!isPathClear(fromX, fromY, toX, toY, board)) return false;
+    }
+    
+    // Создаем временную копию доски
+    const tempBoard = [];
+    for (let i = 0; i < 8; i++) {
+        tempBoard[i] = [...board[i]];
+    }
+    
+    // Сохраняем оригинальные значения
+    const originalFrom = tempBoard[fromX][fromY];
+    const originalTo = tempBoard[toX][toY];
+    
+    // Выполняем временный ход
+    tempBoard[toX][toY] = originalFrom;
+    tempBoard[fromX][fromY] = 0;
+    
+    // Обновляем позицию короля если двигали короля
+    let newKingX = kingX;
+    let newKingY = kingY;
+    if (piece === 6 || piece === 5.5 || piece === 12 || piece === 12.5) {
+        newKingX = toX;
+        newKingY = toY;
+    }
+    
+    // Проверяем, остался ли король под шахом после хода
+    const stillInCheck = isKingInCheck(newKingX, newKingY, tempBoard);
+    
+    return !stillInCheck;
+}
+
+// Функция проверки валидности хода (упрощенная версия)
+function isValidMove(fromX, fromY, toX, toY, board, currentPlayer) {
+    const piece = board[fromX][fromY];
+    
+    // Проверяем, что ход соответствует правилам фигуры
+    if (!canAttack(fromX, fromY, toX, toY, board)) {
+        return false;
+    }
+    
+    // Проверяем, что не съедаем свою фигуру
+    const targetPiece = board[toX][toY];
+    if ((currentPlayer === 0 && targetPiece >= 7 && targetPiece <= 12.5) ||
+        (currentPlayer === 1 && targetPiece >= 1 && targetPiece <= 6)) {
+        return false;
+    }
+    
+    // Для ладьи, слона, ферзя проверяем свободный путь
+    if (piece === 2 || piece === 2.5 || piece === 8 || piece === 8.5 || 
+        piece === 4 || piece === 10 || piece === 5 || piece === 11) {
+        return isPathClear(fromX, fromY, toX, toY, board);
+    }
+    
+    return true;
+}
+
+
+
+
+// Функция проверки пата
+function isStalemate(kingX, kingY, board, currentPlayer) {
+    // Если король под шахом, то это не пат
+    if (isKingInCheck(kingX, kingY, board)) {
+        return false;
+    }
+    
+    // Проверяем все возможные ходы для всех фигур текущего игрока
+    for (let fromX = 0; fromX < 8; fromX++) {
+        for (let fromY = 0; fromY < 8; fromY++) {
+            const piece = board[fromX][fromY];
+            
+            // Проверяем только фигуры текущего игрока
+            if (currentPlayer === 0 && piece >= 7 && piece <= 12.5) {
+                // Белые фигуры (фиолетовые)
+                for (let toX = 0; toX < 8; toX++) {
+                    for (let toY = 0; toY < 8; toY++) {
+                        if (canMoveWithoutCheck(fromX, fromY, toX, toY, board, currentPlayer, kingX, kingY)) {
+                            return false; // Найден допустимый ход - не пат
+                        }
+                    }
+                }
+            } else if (currentPlayer === 1 && piece >= 1 && piece <= 6) {
+                // Черные фигуры (оранжевые)
+                for (let toX = 0; toX < 8; toX++) {
+                    for (let toY = 0; toY < 8; toY++) {
+                        if (canMoveWithoutCheck(fromX, fromY, toX, toY, board, currentPlayer, kingX, kingY)) {
+                            return false; // Найден допустимый ход - не пат
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    return true; // Ни одного хода не найдено - пат
+}
+// Обновляем функцию mat() для проверки мата и пата
+function mat() {
+    // Проверяем мат и пат для обоих игроков после каждого хода
+    if (r == 0) {
+        // Проверяем для белых (фиолетовых)
+        if (isKingInCheck(korx, kory, a)) {
+            if (isCheckmate(korx, kory, a, 0)) {
+                gameOver = true;
+                showGameOver("Мат! Оранжевые выиграли!");
+                return;
+            }
+            // Подсвечиваем шах для белых
+            context.fillStyle = '#DC143c';
+            context.fillRect(kory * grid, korx * grid, grid, grid/8);
+        } else {
+            // Проверяем пат для белых
+            if (isStalemate(korx, kory, a, 0)) {
+                gameOver = true;
+                showGameOver("Пат! Ничья!");
+                return;
+            }
+        }
+    } 
+    else if (r == 1) {
+        // Проверяем для черных (оранжевых)
+        if (isKingInCheck(korbx, korby, a)) {
+            if (isCheckmate(korbx, korby, a, 1)) {
+                gameOver = true;
+                showGameOver("Мат! Фиолетовые выиграли!");
+                return;
+            }
+            // Подсвечиваем шах для черных
+            if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+                context.fillStyle = '#DC143c';
+                context.fillRect(korby * grid, korbx * grid + grid*7/8, grid, grid/8);
+            } else {
+                context.fillStyle = '#DC143c';
+                context.fillRect(korby * grid, korbx * grid, grid, grid/8);
+            }
+        } else {
+            // Проверяем пат для черных
+            if (isStalemate(korbx, korby, a, 1)) {
+                gameOver = true;
+                showGameOver("Пат! Ничья!");
+                return;
+            }
+        }
+    }
+}
+
+// Функция показа сообщения о конце игры
+function showGameOver(message) {
+    // Убедимся, что предыдущее модальное окно удалено
+    const existingModal = document.getElementById('gameOverModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    const gameOverModal = document.createElement('div');
+    gameOverModal.id = 'gameOverModal';
+    gameOverModal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgba(0, 0, 0, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        font-family: Arial, sans-serif;
+    `;
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 40px;
+        border-radius: 20px;
+        text-align: center;
+        color: white;
+        box-shadow: 0 15px 40px rgba(0,0,0,0.7);
+        border: 3px solid gold;
+        max-width: 80%;
+    `;
+    
+    const messageElement = document.createElement('h2');
+    messageElement.textContent = message;
+    messageElement.style.cssText = `
+        margin: 0 0 30px 0;
+        font-size: 32px;
+        text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+        color: #FFD700;
+    `;
+    
+    const restartButton = document.createElement('button');
+    restartButton.textContent = 'Новая игра';
+    restartButton.style.cssText = `
+        background: #FF6600;
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        font-size: 20px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-weight: bold;
+    `;
+    
+    restartButton.onmouseover = function() { 
+        this.style.background = '#FF4500';
+        this.style.transform = 'scale(1.05)';
+    };
+    restartButton.onmouseout = function() { 
+        this.style.background = '#FF6600';
+        this.style.transform = 'scale(1)';
+    };
+    
+    restartButton.onclick = function() {
+        location.reload();
+    };
+    
+    modalContent.appendChild(messageElement);
+    modalContent.appendChild(restartButton);
+    gameOverModal.appendChild(modalContent);
+    document.body.appendChild(gameOverModal);
+}
+
+function showScore(){
+context.clearRect( 0,  grid * 7.75 , grid/5.5, grid);
+
+if (r == 1){
+  context.fillStyle = '#FF6600';
+
+} else {
+  context.fillStyle = '#CC66FF';
+}
+context.font = grid/4 + 'px Courier New';
+
+context.fillText('☻' ,  grid/12, grid * 8 - 1);
+
+}
+
+////////////////////////////////////////////////////////////////////////////
+
+var x = 0;
+var y = 0;
+
+
+
+// Пешка
+
+
+function drawPiece(symbol, x, y, color) {
+    context.fillStyle = color;
+    context.font = grid + 'px Courier New';
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+if (x<2){ 
+    context.save();
+// Сначала перемещаем контекст в нужную позицию
+context.translate(y * grid + grid / 2, x * grid);
+// Затем переворачиваем по оси Y
+context.scale(1, -1);
+    context.fillText(symbol, 0, 0);
+    context.restore();
+}else{
+    context.fillText(symbol, y * grid + grid / 2, grid + x * grid);
+}
+    }else{
+        context.fillText(symbol, y * grid + grid / 2, grid + x * grid);
+    }
+
+}
+
+const whitePieces = [
+    { symbol: '\u2659', x: 6, y: 0 }, { symbol: '\u2659', x: 6, y: 1 }, 
+    { symbol: '\u2659', x: 6, y: 2 }, { symbol: '\u2659', x: 6, y: 3 }, 
+    { symbol: '\u2659', x: 6, y: 4 }, { symbol: '\u2659', x: 6, y: 5 }, 
+    { symbol: '\u2659', x: 6, y: 6 }, { symbol: '\u2659', x: 6, y: 7 }, 
+    { symbol: '\u2654', x: 7, y: 4 }, { symbol: '\u2655', x: 7, y: 3 }, 
+    { symbol: '\u2656', x: 7, y: 0 }, { symbol: '\u2656', x: 7, y: 7 }, 
+    { symbol: '\u2657', x: 7, y: 2 }, { symbol: '\u2657', x: 7, y: 5 }, 
+    { symbol: '\u2658', x: 7, y: 1 }, { symbol: '\u2658', x: 7, y: 6 }
+];
+
+const blackPieces = [
+    { symbol: '\u265F', x: 1, y: 0 }, { symbol: '\u265F', x: 1, y: 1 }, 
+    { symbol: '\u265F', x: 1, y: 2 }, { symbol: '\u265F', x: 1, y: 3 }, 
+    { symbol: '\u265F', x: 1, y: 4 }, { symbol: '\u265F', x: 1, y: 5 }, 
+    { symbol: '\u265F', x: 1, y: 6 }, { symbol: '\u265F', x: 1, y: 7 }, 
+    { symbol: '\u265A', x: 0, y: 4 }, { symbol: '\u265B', x: 0, y: 3 }, 
+    { symbol: '\u265C', x: 0, y: 0 }, { symbol: '\u265C', x: 0, y: 7 }, 
+    { symbol: '\u265D', x: 0, y: 2 }, { symbol: '\u265D', x: 0, y: 5 }, 
+    { symbol: '\u265E', x: 0, y: 1 }, { symbol: '\u265E', x: 0, y: 6 }
+];
+
+// Рисуем белые фигуры
+whitePieces.forEach(piece => drawPiece(piece.symbol, piece.x, piece.y, '#CC66FF'));
+
+blackPieces.forEach(piece => drawPiece(piece.symbol, piece.x, piece.y, '#FF6600'));
+
+
+
+///////
+
+
+
+var a = [];
+
+for (let i = 0; i < 8; i++) {
+    let row = [];
+
+    // Определяем значения для каждой строки на основе индекса `i`
+    if (i === 1) {
+        row = Array(8).fill(1); // Заполнение всей строки единицами
+    } else if (i === 0) {
+        row = [2.5, 3, 4, 5, 5.5, 4, 3, 2.5]; // Заполнение первой строки
+    } else if (i === 6) {
+        row = Array(8).fill(7); // Заполнение всей строки семерками
+    } else if (i === 7) {
+        row = [8.5, 9, 10, 11, 12.5, 10, 9, 8.5]; // Заполнение последней строки
+    } else {
+        row = Array(8).fill(0); // Заполнение остальных строк нулями
+    }
+
+    a.push(row);
+}
+
+
+
+x = 10;
+y = 10;
+
+
+function shag() {
+    if (r == 1 && isKingInCheck(korbx, korby, a)) {
+        if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+            context.fillStyle = '#DC143c';
+            context.fillRect(korby * grid, korbx * grid + grid*7/8, grid, grid/8);
+        } else {
+            context.fillStyle = '#DC143c';
+            context.fillRect(korby * grid, korbx * grid, grid, grid/8);
+        }
+    } 
+    if (r == 0 && isKingInCheck(korx, kory, a)) {
+        context.fillStyle = '#DC143c';
+        context.fillRect(kory * grid, korx * grid, grid, grid/8);
+    } 
+}
+
+function isKingInCheck(kingX, kingY, board) {
+  
+    // Ищем фигуры противника
+    const enemyPieces = (r === 0) ? [1, 2, 3, 4, 5, 6, 5.5, 2.5] : [7, 8, 9, 10, 11, 12, 12.5, 8.5];
+
+    for (let piece of enemyPieces) {
+        for (let x = 0; x < board.length; x++) {
+            for (let y = 0; y < board[x].length; y++) {
+                if (board[x][y] === piece) {
+                    // Для каждой фигуры проверяем, может ли она атаковать короля
+                    if (canAttack(x, y, kingX, kingY, board)) {
+                        
+                        return true; // Король под шахом
+                        
+                    }
+                }
+            }
+        }
+    }
+    
+    
+    return false; // Король не под шахом
+}
+
+
+
+
+
+function canAttack(fromX, fromY, toX, toY, board) {
+    const piece = board[fromX][fromY];
+    const targetPiece = board[toX][toY];
+
+    switch (piece) {
+        case 1: // Черная пешка (оранжевая)
+            // Атака по диагонали
+            if (fromX + 1 === toX && Math.abs(fromY - toY) === 1) {
+                return targetPiece !== 0 && targetPiece >= 7; // Может атаковать только белые фигуры
+            }
+            // Движение вперед
+            if (fromY === toY) {
+                if (fromX + 1 === toX) {
+                    return targetPiece === 0; // Одна клетка вперед
+                }
+                if (fromX === 1 && fromX + 2 === toX) {
+                    return targetPiece === 0 && board[fromX + 1][fromY] === 0; // Две клетки вперед
+                }
+            }
+            break;
+            
+        case 7: // Белая пешка (фиолетовая)
+            // Атака по диагонали
+            if (fromX - 1 === toX && Math.abs(fromY - toY) === 1) {
+                return targetPiece !== 0 && targetPiece <= 6; // Может атаковать только черные фигуры
+            }
+            // Движение вперед
+            if (fromY === toY) {
+                if (fromX - 1 === toX) {
+                    return targetPiece === 0; // Одна клетка вперед
+                }
+                if (fromX === 6 && fromX - 2 === toX) {
+                    return targetPiece === 0 && board[fromX - 1][fromY] === 0; // Две клетки вперед
+                }
+            }
+            break;
+            
+        case 2: case 2.5: case 8: case 8.5: // Ладьи
+            if ((fromX === toX || fromY === toY)) {
+                return isPathClear(fromX, fromY, toX, toY, board);
+            }
+            break;
+            
+        case 3: case 9: // Кони
+            return (Math.abs(fromX - toX) === 2 && Math.abs(fromY - toY) === 1) ||
+                   (Math.abs(fromX - toX) === 1 && Math.abs(fromY - toY) === 2);
+                   
+        case 4: case 10: // Слоны
+            if (Math.abs(fromX - toX) === Math.abs(fromY - toY)) {
+                return isPathClear(fromX, fromY, toX, toY, board);
+            }
+            break;
+            
+        case 5: case 11: // Ферзи
+            if (fromX === toX || fromY === toY || Math.abs(fromX - toX) === Math.abs(fromY - toY)) {
+                return isPathClear(fromX, fromY, toX, toY, board);
+            }
+            break;
+            
+        case 6: case 5.5: case 12: case 12.5: // Короли
+            return Math.abs(fromX - toX) <= 1 && Math.abs(fromY - toY) <= 1;
+    }
+
+    return false;
+}
+
+// Предполагается, что данная функция уже реализована
+function isPathClear(fromX, fromY, toX, toY, board) {
+    // Если мы движемся по вертикали
+    if (fromX === toX) {
+        let step = (toY > fromY) ? 1 : -1; // Определяем направление движения
+        for (let y = fromY + step; y !== toY; y += step) {
+            if (board[fromX][y] !== 0) { // Проверяем, занята ли клетка
+                return false; // Путь занят
+            }
+        }
+    } 
+    // Если мы движемся по горизонтали
+    else if (fromY === toY) {
+        let step = (toX > fromX) ? 1 : -1; // Определяем направление движения
+        for (let x = fromX + step; x !== toX; x += step) {
+            if (board[x][fromY] !== 0) { // Проверяем, занята ли клетка
+                return false; // Путь занят
+            }
+        }
+    } 
+    // Если мы движемся по диагонали
+    else if (Math.abs(fromX - toX) === Math.abs(fromY - toY)) {
+        let xStep = (toX > fromX) ? 1 : -1;
+        let yStep = (toY > fromY) ? 1 : -1;
+        let x = fromX + xStep;
+        let y = fromY + yStep;
+        while (x !== toX && y !== toY) {
+            if (board[x][y] !== 0) { // Проверяем, занята ли клетка
+                return false; // Путь занят
+            }
+            x += xStep;
+            y += yStep;
+        }
+    } else {
+        return false; // Невозможно двигаться по указанным координатам
+    }
+
+    return true; // Путь свободен
+}
+
+var korx = 7
+var kory = 4
+var korbx = 0
+var korby = 4
+
+
+var poz = 0;
+document.onclick = (el) => {
+if(!gameOver){
+if(!cho){ 
+i = Math.floor(el.offsetY/grid)
+j = Math.floor(el.offsetX/grid)
+
+
+// Пешка
+function p(){
+
+
+context.fillStyle = '#CC66FF';
+
+
+context.font = grid + 'px Courier New';
+context.fillText('\u2659',   Math.floor(el.offsetX/grid) * grid +grid/2, grid + Math.floor(el.offsetY/grid) * grid, grid, grid );
+}
+
+ ///////
+// Король
+function k(){
+context.fillStyle = '#CC66FF';
+
+context.font = grid + 'px Courier New';
+context.fillText('\u2654',  Math.floor(el.offsetX/grid) * grid +grid/2, grid + Math.floor(el.offsetY/grid) * grid, grid, grid );
+}
+
+ 
+//////////
+// Ферьз
+function f(){
+context.fillStyle = '#CC66FF';
+
+context.font = grid + 'px Courier New';
+context.fillText('\u2655',  Math.floor(el.offsetX/grid) * grid +grid/2, grid + Math.floor(el.offsetY/grid) * grid, grid, grid );
+}
+ 
+
+///////
+// Ладья
+function l(){
+context.fillStyle = '#CC66FF';
+
+context.font = grid + 'px Courier New';
+context.fillText('\u2656',  Math.floor(el.offsetX/grid) * grid +grid/2, grid + Math.floor(el.offsetY/grid) * grid, grid, grid );
+}
+ 
+
+///////
+// Слон
+function sl(){
+context.fillStyle = '#CC66FF';
+
+context.font = grid + 'px Courier New';
+context.fillText('\u2657',  Math.floor(el.offsetX/grid) * grid +grid/2, grid + Math.floor(el.offsetY/grid) * grid, grid, grid );
+}
+
+
+
+///////
+
+// Конь
+function ko(){
+context.fillStyle = '#CC66FF';
+
+context.font = grid + 'px Courier New';
+context.fillText('\u2658', Math.floor(el.offsetX/grid) * grid +grid/2, grid + Math.floor(el.offsetY/grid) * grid, grid, grid );
+}
+
+
+// Пешка b
+function pb(){
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+    context.save();
+// Сначала перемещаем контекст в нужную позицию
+context.translate(Math.floor(el.offsetX / grid) * grid + grid / 2, Math.floor(el.offsetY / grid) * grid);
+// Затем переворачиваем по оси Y
+context.scale(1, -1);
+// Теперь рисуем текст (фигура)
+context.fillStyle = '#FF6600';
+context.font = grid + 'px Courier New';
+// Обратите внимание на изменение координат Y
+context.fillText('\u265F', 0, 0, grid, grid); // здесь 0, 0
+context.restore();
+    } else {
+        context.fillStyle = '#FF6600';
+context.font = grid + 'px Courier New';
+// Обратите внимание на изменение координат Y
+context.fillText('\u265F', Math.floor(el.offsetX / grid) * grid + grid / 2, Math.floor(el.offsetY / grid) * grid + grid, grid, grid); // здесь 0, 0
+    }
+}
+
+
+ ///////
+// Король
+function kb(){
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+
+context.save();
+// Сначала перемещаем контекст в нужную позицию
+context.translate(Math.floor(el.offsetX / grid) * grid + grid / 2, Math.floor(el.offsetY / grid) * grid);
+// Затем переворачиваем по оси Y
+context.scale(1, -1);
+context.fillStyle = '#FF6600';
+
+context.font = grid + 'px Courier New';
+context.fillText('\u265A',  0, 0, grid, grid );
+context.restore();
+    } else{
+        context.fillStyle = '#FF6600';
+
+context.font = grid + 'px Courier New';
+context.fillText('\u265A',  Math.floor(el.offsetX / grid) * grid + grid / 2, Math.floor(el.offsetY / grid) * grid + grid, grid, grid );
+
+    }
+}
+
+
+//////////
+// Ферьз
+function fb(){
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+context.save();
+// Сначала перемещаем контекст в нужную позицию
+context.translate(Math.floor(el.offsetX / grid) * grid + grid / 2, Math.floor(el.offsetY / grid) * grid);
+// Затем переворачиваем по оси Y
+context.scale(1, -1);
+context.fillStyle = '#FF6600';
+
+context.font = grid + 'px Courier New';
+context.fillText('\u265B', 0, 0, grid, grid );
+context.restore();
+} else{
+    context.fillStyle = '#FF6600';
+
+context.font = grid + 'px Courier New';
+context.fillText('\u265B', Math.floor(el.offsetX / grid) * grid + grid / 2, Math.floor(el.offsetY / grid) * grid + grid, grid, grid );
+}
+}
+
+///////
+// Ладья
+function lb(){
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+context.save();
+// Сначала перемещаем контекст в нужную позицию
+context.translate(Math.floor(el.offsetX / grid) * grid + grid / 2, Math.floor(el.offsetY / grid) * grid);
+// Затем переворачиваем по оси Y
+context.scale(1, -1);
+context.fillStyle = '#FF6600';
+
+context.font = grid + 'px Courier New';
+context.fillText('\u265C',  0, 0, grid, grid);
+context.restore();
+} else{
+    context.fillStyle = '#FF6600';
+
+context.font = grid + 'px Courier New';
+context.fillText('\u265C', Math.floor(el.offsetX / grid) * grid + grid / 2, Math.floor(el.offsetY / grid) * grid + grid, grid, grid );
+}
+}
+
+
+///////
+// Слон
+function slb(){
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+context.save();
+// Сначала перемещаем контекст в нужную позицию
+context.translate(Math.floor(el.offsetX / grid) * grid + grid / 2, Math.floor(el.offsetY / grid) * grid);
+// Затем переворачиваем по оси Y
+context.scale(1, -1);
+context.fillStyle = '#FF6600';
+
+context.font = grid + 'px Courier New';
+context.fillText('\u265D',  0, 0, grid, grid );
+context.restore();
+} else{
+    context.fillStyle = '#FF6600';
+
+context.font = grid + 'px Courier New';
+context.fillText('\u265D', Math.floor(el.offsetX / grid) * grid + grid / 2, Math.floor(el.offsetY / grid) * grid + grid, grid, grid );
+}
+}
+
+
+///////
+
+// Конь
+function kob(){
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+context.save();
+// Сначала перемещаем контекст в нужную позицию
+context.translate(Math.floor(el.offsetX / grid) * grid + grid / 2, Math.floor(el.offsetY / grid) * grid);
+// Затем переворачиваем по оси Y
+context.scale(1, -1);
+context.fillStyle = '#FF6600';
+
+context.font = grid + 'px Courier New';
+context.fillText('\u265E',  0, 0, grid, grid );
+context.restore();
+} else{
+    context.fillStyle = '#FF6600';
+
+context.font = grid + 'px Courier New';
+context.fillText('\u265E', Math.floor(el.offsetX / grid) * grid + grid / 2, Math.floor(el.offsetY / grid) * grid + grid, grid, grid );
+}
+}
+///////
+function v2(){
+for (let i = 0; i < 8; i++){
+for (let j = 0; j < 8; j++){
+s ++; 
+if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+if (a[i][j] < 7 && a[i][j] > 0 ){
+    
+    if ((s % 2 == 0 && i % 2 == 0) || (s % 2 !== 0 && i % 2 !== 0)){ 
+            
+            context.fillStyle = '#000';
+            context.fillRect( j * grid ,  i * grid +grid*7/8, grid, grid/8);   
+        
+    } else {
+    
+        context.fillStyle = '#fff';
+    context.fillRect( j * grid ,   i * grid +grid*7/8, grid, grid/8);
+    
+    }
+    }else if(a[i][j] >= 7){
+        if ((s % 2 == 0 && i % 2 == 0) || (s % 2 !== 0 && i % 2 !== 0)){ 
+            
+            context.fillStyle = '#000';
+            context.fillRect( j * grid ,   i * grid , grid, grid/8);  
+        
+    } else {
+    
+        context.fillStyle = '#fff';
+        context.fillRect( j * grid ,   i * grid , grid, grid/8);
+    
+    } 
+    }
+} else{
+    if ((s % 2 == 0 && i % 2 == 0) || (s % 2 !== 0 && i % 2 !== 0)){ 
+            
+            context.fillStyle = '#000';
+            context.fillRect( j * grid ,   i * grid , grid, grid/8); 
+        
+    } else {
+    
+        context.fillStyle = '#fff';
+    context.fillRect( j * grid ,   i * grid , grid, grid/8);
+    
+    } 
+}
+
+}
+}
+
+}
+function v(){
+
+for (let i = 0; i < 8; i++){
+for (let j = 0; j < 8; j++){
+s ++; 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+
+if (a[i][j] < 7 && a[i][j] > 0 ){
+    
+    if ((s % 2 == 0 && i % 2 == 0) || (s % 2 !== 0 && i % 2 !== 0)){ 
+            
+            context.fillStyle = '#000';
+            context.fillRect( j * grid ,  i * grid +grid*7/8, grid, grid/8);   
+        
+    } else {
+    
+        context.fillStyle = '#fff';
+    context.fillRect( j * grid ,   i * grid +grid*7/8, grid, grid/8);
+    
+    }
+    }else if(a[i][j] >= 7){
+        if ((s % 2 == 0 && i % 2 == 0) || (s % 2 !== 0 && i % 2 !== 0)){ 
+            
+            context.fillStyle = '#000';
+            context.fillRect( j * grid ,   i * grid , grid, grid/8); 
+        
+    } else {
+    
+        context.fillStyle = '#fff';
+        context.fillRect( j * grid ,   i * grid , grid, grid/8);
+    
+    } 
+    }
+} else{
+    if ((s % 2 == 0 && i % 2 == 0) || (s % 2 !== 0 && i % 2 !== 0)){ 
+            
+            context.fillStyle = '#000';
+            context.fillRect( j * grid ,   i * grid , grid, grid/8); 
+        
+    } else {
+    
+        context.fillStyle = '#fff';
+        context.fillRect( j * grid ,   i * grid , grid, grid/8);
+    
+    } 
+}
+
+}
+}
+n()
+poz = a[i][j]
+pozx = i
+pozy = j
+
+if ( (a[i][j] > 0 && a[i][j] < 1 ) ||(a[i][j] > 13)){
+    
+}else{
+    
+   // shag()
+   context.fillStyle = '#20B2AA';
+   if( poz < 7 ){ 
+if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+    context.fillRect( Math.floor(el.offsetX/grid) * grid,  Math.floor(el.offsetY/grid) * grid + grid *7/8, grid, grid/8);
+} else{
+    context.fillRect( Math.floor(el.offsetX/grid) * grid,  Math.floor(el.offsetY/grid) * grid, grid, grid/8);
+}
+} else {
+    context.fillRect( Math.floor(el.offsetX/grid) * grid,  Math.floor(el.offsetY/grid) * grid, grid, grid/8);
+ }
+
+
+
+
+
+}
+}
+
+
+
+function c(){
+
+for (let i = 0; i < 8; i++){
+for (let j = 0; j < 8; j++){
+
+s ++; 
+if ((s % 2 == 0 && i % 2 == 0) || (s % 2 !== 0 && i % 2 !== 0)){
+if (a[i][j]==0){
+context.clearRect( j * grid,  i * grid, grid, grid);
+context.fillStyle = '#000';
+context.fillRect( j * grid,  i * grid, grid, grid);
+}
+} else {
+if (a[i][j]==0){
+context.clearRect( j * grid,  i * grid, grid, grid);
+context.fillStyle = '#fff';
+context.fillRect( j * grid,  i * grid, grid, grid);
+}
+}
+
+}
+
+}
+s=0;
+}
+
+
+function n(){
+x = Math.floor(el.offsetX/grid);
+y = Math.floor(el.offsetY/grid);
+}
+
+
+function kill(){
+
+    v2()
+if ((Math.floor(el.offsetY/grid) % 2 == 0 && Math.floor(el.offsetX/grid) % 2 == 0) || (Math.floor(el.offsetY/grid) % 2 !== 0 && Math.floor(el.offsetX/grid) % 2 !== 0)){
+context.fillStyle = '#FFF';
+context.fillRect( Math.floor(el.offsetX/grid) * grid,  Math.floor(el.offsetY/grid) * grid, grid, grid);
+} else {
+context.fillStyle = '#000';
+context.fillRect( Math.floor(el.offsetX/grid) * grid,  Math.floor(el.offsetY/grid) * grid, grid, grid);
+}
+
+
+if (a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] == 6 || a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] == 12
+	 || a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] == 5.5 || a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] == 12.5){
+
+    if (r==0){
+        
+      r = 1
+    }else {
+      r =0
+    }
+  
+
+
+
+
+ a[y][x] = 0;
+ 
+ 
+ 
+}else{
+ a[y][x] = 0;
+ }
+ for (let i = 0; i < 8; i++){
+for (let j = 0; j < 8; j++){
+if ((a[i][j] > 0 && a[i][j] < 1 ) ||(a[i][j] > 13) ){
+a[i][j] = 0
+}
+}
+}
+ 
+}
+
+
+
+ if (a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] > 6  && r == 0 ){ 
+   
+v();
+
+ n();
+ } 
+if (a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] < 7  && a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] > 0  && r == 1 ){ 
+    
+v();
+
+ n();
+ } 
+
+
+ //пешки
+ if (poz == 7 && r == 0 && pozx !== i && pozy !== j && a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] == 0.2 && pozx-1 == i && (pozy+1 == j || pozy-1 == j) ){
+    const fig = a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)]  
+        a[pozx][pozy]=0
+        a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 7;
+    if (!isKingInCheck(korx, kory, a)) {
+
+kill()
+ a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 7;
+  a[Math.floor(el.offsetY/grid)+1][Math.floor(el.offsetX/grid)] = 0;
+  p();
+  n();
+ 
+    r = (r + 1) % 2; // Смена хода только если игра не окончена
+    mat(); 
+} else  {
+    a[pozx][pozy]=7
+    a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = fig;
+}
+}
+if (poz == 1 && r == 1 && pozx !== i && pozy !== j && a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] == 13.1  && pozx+1 == i && (pozy+1 == j || pozy-1 == j)){
+
+    const fig = a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] 
+            a[pozx][pozy]=0
+            a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 1;
+            if (!isKingInCheck(korbx, korby, a)) {
+
+kill()
+ a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 1;
+ a[Math.floor(el.offsetY/grid)-1][Math.floor(el.offsetX/grid)] = 0;
+  pb();
+  n(); 
+ 
+    r = (r + 1) % 2; // Смена хода только если игра не окончена
+    mat(); 
+} else  {
+    a[pozx][pozy]=1
+    a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = fig;
+}
+}
+ if (poz == 7 && r == 0 && pozx !== i && pozy !== j && ( a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] == 5.5 || 
+ a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] == 2.5 )&& pozx-1 == i ){
+
+    const fig = a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)]  
+        a[pozx][pozy]=0
+        a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 7;
+    if (!isKingInCheck(korx, kory, a)) {
+
+kill()
+ a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 7;
+  
+  p();
+  n();
+  if (a[y][x] == 7 && y == 0){
+    
+    px = y
+    py = x
+    cho =true
+
+    onPawnPromotion()
+ 
+    
+
+ 
+ } else { 
+
+    r = (r + 1) % 2; // Смена хода только если игра не окончена
+    mat(); 
+}
+} else  {
+    a[pozx][pozy]=7
+    a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = fig;
+}
+}
+if (poz == 1 && r == 1 && pozx !== i && pozy !== j && ( a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] == 12.5 || 
+a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] == 8.5) && pozx+1 == i){
+
+    const fig = a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] 
+            a[pozx][pozy]=0
+            a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 1;
+            if (!isKingInCheck(korbx, korby, a)) {
+
+kill()
+ a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 1;
+ 
+  pb();
+  n(); 
+      if (a[y][x] == 1  && y == 7){
+    
+        px = y
+        py = x
+        cho =true
+
+        onPawnPromotion()
+        
+     
+
+ }else { 
+    r = (r + 1) % 2; // Смена хода только если игра не окончена
+    mat(); 
+}
+} else  {
+    a[pozx][pozy]=1
+    a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = fig;
+}
+}
+/////
+ 
+if (  poz == 7 && r == 0 && ((a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] == 0 && Math.floor(el.offsetY/grid) == pozx-1 && Math.floor(el.offsetX/grid) == pozy)|| 
+( a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] >0 &&a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] <7 && Math.floor(a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)]% 1 == 0)
+ && (Math.floor(el.offsetY/grid) == y-1 && Math.floor(el.offsetX/grid) == x-1 || Math.floor(el.offsetY/grid) == y-1 && Math.floor(el.offsetX/grid) == x+1)) ) ){
+
+
+    const fig = a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)]  
+        a[pozx][pozy]=0
+        a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 7;
+    if (!isKingInCheck(korx, kory, a)) {
+
+kill()
+ a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 7;
+ p();
+ n();
+if (a[y][x] == 7 && y == 0){
+   
+    px = y
+    py = x
+    cho =true
+  
+    onPawnPromotion()
+
+    
+
+
+
+ 
+ } else { 
+
+    r = (r + 1) % 2; // Смена хода только если игра не окончена
+    mat(); 
+}
+} else  {
+    a[pozx][pozy]=7
+    a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = fig;
+}
+} 
+if (  poz == 7 && y == 6 && a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] == 0 && a[Math.floor(el.offsetY/grid)+1][Math.floor(el.offsetX/grid)] == 0 
+&& Math.floor(el.offsetY/grid) == y-2 && Math.floor(el.offsetX/grid) == x  && r == 0 ){
+
+    const fig = a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)]  
+        a[pozx][pozy]=0
+        a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 7;
+    if (!isKingInCheck(korx, kory, a)) {
+
+  kill()
+
+ p();
+ a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 7;
+  a[Math.floor(el.offsetY/grid)+1][Math.floor(el.offsetX/grid)] = 13.1;
+
+    r = (r + 1) % 2; // Смена хода только если игра не окончена
+    mat(); 
+} else  {
+    a[pozx][pozy]=7
+    a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = fig;
+}
+} 
+
+if (  poz == 1 && r == 1 && ((a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] == 0 && Math.floor(el.offsetY/grid) == y+1 && Math.floor(el.offsetX/grid) == x)||
+ (a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] >6  && Math.floor(a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)]% 1 == 0) 
+ && (Math.floor(el.offsetY/grid) == y+1 && Math.floor(el.offsetX/grid) == x+1 ||
+ Math.floor(el.offsetY/grid) == y+1 && Math.floor(el.offsetX/grid) == x-1)))  ){
+
+    const fig = a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] 
+            a[pozx][pozy]=0
+            a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 1;
+            if (!isKingInCheck(korbx, korby, a)) {
+
+kill()
+ a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 1;
+  pb();
+  n();
+    if (a[y][x] == 1  && y == 7){
+  
+        px = y
+        py = x
+        cho =true
+    
+        onPawnPromotion()
+    
+        
+ 
+ }else { 
+
+    r = (r + 1) % 2; // Смена хода только если игра не окончена
+    mat(); 
+}
+} else  {
+    a[pozx][pozy]=1
+    a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = fig;
+}
+}
+if ( poz == 1 && r == 1 &&  y == 1 && a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] == 0 && a[Math.floor(el.offsetY/grid)-1][Math.floor(el.offsetX/grid)] == 0 
+&& Math.floor(el.offsetY/grid) == y+2 && Math.floor(el.offsetX/grid) == x   ){
+    
+    const fig = a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] 
+            a[pozx][pozy]=0
+            a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 1;
+            if (!isKingInCheck(korbx, korby, a)) {
+
+
+ kill()
+
+ pb();
+ a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 1;
+   a[Math.floor(el.offsetY/grid)-1][Math.floor(el.offsetX/grid)] = 0.2;
+
+    r = (r + 1) % 2; // Смена хода только если игра не окончена
+    mat(); 
+} else  {
+    a[pozx][pozy]=1
+    a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = fig;
+}
+}
+
+
+
+//слоны
+if (poz == 4 && r == 1 && pozx !== i && pozy !== j && Math.abs(pozx-i)===Math.abs(pozy-j) ){
+    const newKingX = pozx
+    const newKingY = pozy
+    const fig = a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] 
+
+  if (isPathClear(newKingX, newKingY, i, j, a)) {
+            a[pozx][pozy]=0
+            a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 4;
+            if (!isKingInCheck(korbx, korby, a)) {
+kill()
+ a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 4;
+  slb();
+  n();
+
+    r = (r + 1) % 2; // Смена хода только если игра не окончена
+    mat(); 
+} else  {
+    a[pozx][pozy]=4
+    a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = fig;
+}
+}
+}
+if (poz == 10 && r == 0 && pozx !== i && pozy !== j && Math.abs(pozx-i)===Math.abs(pozy-j) ){
+    const newKingX = pozx
+    const newKingY = pozy
+    const fig = a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] 
+
+  if (isPathClear(newKingX, newKingY, i, j, a)) {
+    a[pozx][pozy]=0
+        a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 10;
+    if (!isKingInCheck(korx, kory, a)) {
+kill()
+ a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 10;
+  sl();
+  n();
+
+    r = (r + 1) % 2; // Смена хода только если игра не окончена
+    mat(); 
+} else  {
+    a[pozx][pozy]=10
+    a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = fig;
+}
+}
+}
+//кони
+if (poz == 3 && r == 1 && pozx !== i && pozy !== j  && ( (pozx+1 == i && pozy+2 == j) || (pozx-1 == i && pozy+2 == j) || (pozx+1 == i && pozy-2 == j) || (pozx-1 == i && pozy-2 == j) 
+|| (pozx+2 == i && pozy+1 == j) || (pozx-2 == i && pozy+1 == j) || (pozx+2 == i && pozy-1 == j) || (pozx-2 == i && pozy-1 == j) ) ){
+    
+  
+    const fig = a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] 
+            a[pozx][pozy]=0
+            a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 3;
+            if (!isKingInCheck(korbx, korby, a)) {
+
+
+kill()
+ a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 3;
+  kob();
+ n();
+
+    r = (r + 1) % 2; // Смена хода только если игра не окончена
+    mat(); 
+} else  {
+    a[pozx][pozy]=3
+    a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = fig;
+}
+}
+if (poz == 9 && r == 0 && pozx !== i && pozy !== j  && ( (pozx+1 == i && pozy+2 == j) || (pozx-1 == i && pozy+2 == j) || (pozx+1 == i && pozy-2 == j) || (pozx-1 == i && pozy-2 == j) 
+|| (pozx+2 == i && pozy+1 == j) || (pozx-2 == i && pozy+1 == j) || (pozx+2 == i && pozy-1 == j) || (pozx-2 == i && pozy-1 == j) ) ){
+
+ 
+    const fig = a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)]  
+        a[pozx][pozy]=0
+        a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 9;
+    if (!isKingInCheck(korx, kory, a)) {
+
+
+ kill()
+ a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 9;
+  ko();
+  n();
+
+    r = (r + 1) % 2; // Смена хода только если игра не окончена
+    mat(); 
+} else  {
+    a[pozx][pozy]=9
+    a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = fig;
+}
+}
+
+
+//ладья
+if ((poz == 2 || poz == 2.5) && r == 1 && (pozx !== i && pozy == j || pozy !== j && pozx == i )){
+
+    const newKingX = pozx
+    const newKingY = pozy
+    const fig = a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] 
+
+  if (isPathClear(newKingX, newKingY, i, j, a)) {
+            a[pozx][pozy]=0
+            a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 2;
+            if (!isKingInCheck(korbx, korby, a)) {
+kill()
+ a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 2;
+  lb();
+  n();
+    r = (r + 1) % 2; // Смена хода только если игра не окончена
+    mat(); 
+} else  {
+    a[pozx][pozy]=2
+    a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = fig;
+}
+}
+}
+if ((poz == 8 || poz == 8.5) && r == 0 && (pozx !== i && pozy == j || pozy !== j && pozx == i ) ){
+
+    const newKingX = pozx
+    const newKingY = pozy
+    const fig = a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] 
+
+  if (isPathClear(newKingX, newKingY, i, j, a)) {
+    a[pozx][pozy]=0
+        a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 8;
+    if (!isKingInCheck(korx, kory, a)) {
+
+
+kill()
+
+ a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 8;
+  l();
+  n();
+
+    r = (r + 1) % 2; // Смена хода только если игра не окончена
+    mat(); 
+} else  {
+    a[pozx][pozy]=8
+    a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = fig;
+}
+}
+}
+
+
+
+ 
+
+
+
+//ферьзь
+if (poz == 5 && r == 1 && ((pozx !== i  || pozy !== j  ) && (pozx == i || pozy == j  || Math.abs(pozx-i)===Math.abs(pozy-j)) ) ){
+    
+    const newKingX = pozx
+    const newKingY = pozy
+    const fig = a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] 
+
+  
+        if (isPathClear(newKingX, newKingY, i, j, a)) {
+            a[pozx][pozy]=0
+            a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 5;
+            if (!isKingInCheck(korbx, korby, a)) {
+kill()
+ a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 5;
+ 
+ 
+  fb();
+  n();
+
+    r = (r + 1) % 2; // Смена хода только если игра не окончена
+    mat(); 
+} else  {
+    a[pozx][pozy]=5
+    a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = fig;
+}
+} 
+ 
+
+
+}
+if (poz == 11 && r == 0 && ((pozx !== i  || pozy !== j  ) && (pozx == i || pozy == j  || Math.abs(pozx-i)===Math.abs(pozy-j)) ) ){
+    
+    const newKingX = pozx
+    const newKingY = pozy
+    const fig = a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] 
+  
+    if (isPathClear(newKingX, newKingY, i, j, a)) {
+        a[pozx][pozy]=0
+        a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 11;
+    if (!isKingInCheck(korx, kory, a)) {
+        
+
+kill()
+ a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = 11;
+  f();
+  n();
+
+    r = (r + 1) % 2; // Смена хода только если игра не окончена
+    mat(); 
+} else {
+    a[pozx][pozy]=11
+    a[Math.floor(el.offsetY/grid)][Math.floor(el.offsetX/grid)] = fig;
+  
+    }
+}
+
+
+
+
+
+}
+//король
+if ((poz == 6 || poz == 5.5) && r == 1 && (pozx+1 == Math.floor(el.offsetY/grid) && pozy+1 == Math.floor(el.offsetX/grid) || pozx+1 == Math.floor(el.offsetY/grid) && pozy == Math.floor(el.offsetX/grid)
+||pozx+1 == Math.floor(el.offsetY/grid) && pozy-1 == Math.floor(el.offsetX/grid)|| pozx == Math.floor(el.offsetY/grid) && pozy+1 == Math.floor(el.offsetX/grid)
+|| pozx == Math.floor(el.offsetY/grid) && pozy-1 == Math.floor(el.offsetX/grid) || pozx-1 == Math.floor(el.offsetY/grid) && pozy+1 == Math.floor(el.offsetX/grid) 
+|| pozx-1 == Math.floor(el.offsetY/grid) && pozy == Math.floor(el.offsetX/grid) || pozx-1 == Math.floor(el.offsetY/grid) && pozy-1 == Math.floor(el.offsetX/grid) )){
+
+ // Сохраняем текущее положение короля
+
+
+    // Устанавливаем новое положение короля
+    const newKingX = Math.floor(el.offsetY / grid);
+    const newKingY = Math.floor(el.offsetX / grid);
+    a[pozx][pozy]=0
+    // Проверяем шах для короля после предполагаемого движения
+    if (!isKingInCheck(newKingX, newKingY, a)) {
+        // Если король не под шахом, разрешаем движение
+        kill();
+        a[newKingX][newKingY] = 6; // Установлю нового короля
+      korbx = newKingX
+      korby = newKingY
+        kb();
+        n();
+    r = (r + 1) % 2; // Смена хода только если игра не окончена
+    mat(); 
+    } else {  a[pozx][pozy]=6}
+}
+if ((poz == 12 || poz == 12.5) && r == 0 && (pozx+1 == Math.floor(el.offsetY/grid) && pozy+1 == Math.floor(el.offsetX/grid) || pozx+1 == Math.floor(el.offsetY/grid) && pozy == Math.floor(el.offsetX/grid)
+||pozx+1 == Math.floor(el.offsetY/grid) && pozy-1 == Math.floor(el.offsetX/grid)|| pozx == Math.floor(el.offsetY/grid) && pozy+1 == Math.floor(el.offsetX/grid)
+|| pozx == Math.floor(el.offsetY/grid) && pozy-1 == Math.floor(el.offsetX/grid) || pozx-1 == Math.floor(el.offsetY/grid) && pozy+1 == Math.floor(el.offsetX/grid) 
+|| pozx-1 == Math.floor(el.offsetY/grid) && pozy == Math.floor(el.offsetX/grid) || pozx-1 == Math.floor(el.offsetY/grid) && pozy-1 == Math.floor(el.offsetX/grid) ) ){
+
+  a[pozx][pozy]=0
+
+    // Устанавливаем новое положение короля
+    const newKingX = Math.floor(el.offsetY / grid);
+    const newKingY = Math.floor(el.offsetX / grid);
+
+    // Проверяем шах для короля после предполагаемого движения
+    if (!isKingInCheck(newKingX, newKingY, a)) {
+kill()
+
+ a[newKingX][newKingY] = 12;
+korx= newKingX
+kory= newKingY
+  k();
+  n();
+    r = (r + 1) % 2; // Смена хода только если игра не окончена
+    mat(); 
+    }else { a[pozx][pozy]=12}
+}
+
+
+
+
+
+
+if (poz == 5.5 && a[0][0] == 2.5 && a[0][1] == 0 && a[0][2] == 0 && a[0][3] == 0 &&  Math.floor(el.offsetY/grid) == 0 && Math.floor(el.offsetX/grid) == 2  ){
+  
+
+    // Устанавливаем новое положение короля
+    const newKingX = Math.floor(el.offsetY / grid);
+    const newKingY = Math.floor(el.offsetX / grid);
+
+    // Проверяем шах для короля после предполагаемого движения
+    if ((!isKingInCheck(0, 3, a) && !isKingInCheck(0, 4, a) && !isKingInCheck(newKingX, newKingY, a))) {
+a[0][4] = 0
+a[0][0] = 0
+a[0][2] = 6
+a[0][3] = 2
+korbx = newKingX
+korby = newKingY
+ kb();
+if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+ context.save();
+// Сначала перемещаем контекст в нужную позицию
+context.translate(3 * grid + grid / 2, 0);
+// Затем переворачиваем по оси Y
+context.scale(1, -1);
+// Теперь рисуем текст (фигура)
+context.fillStyle = '#FF6600';
+context.font = grid + 'px Courier New';
+// Обратите внимание на изменение координат Y
+context.fillText('\u265C', 0, 0, grid, grid); // здесь 0, 0
+context.restore();
+}else{
+    context.fillStyle = '#FF6600';
+context.font = grid + 'px Courier New';
+// Обратите внимание на изменение координат Y
+context.fillText('\u265C', 3 * grid + grid / 2, grid, grid, grid); // здесь 0, 0
+ }
+  n();
+    r = (r + 1) % 2; // Смена хода только если игра не окончена
+    mat(); 
+    }
+}
+if (poz == 5.5 && a[0][7] == 2.5 && a[0][5] == 0 && a[0][6] == 0 &&  Math.floor(el.offsetY/grid) == 0 && Math.floor(el.offsetX/grid) == 6  ){
+
+
+    // Устанавливаем новое положение короля
+    const newKingX = Math.floor(el.offsetY / grid);
+    const newKingY = Math.floor(el.offsetX / grid);
+
+    // Проверяем шах для короля после предполагаемого движения
+    if (!isKingInCheck(newKingX, newKingY, a) && !isKingInCheck(0, 4, a) && !isKingInCheck(0, 5, a)) {
+a[0][4] = 0
+a[0][7] = 0
+a[0][6] = 6
+a[0][5] = 2
+korbx = newKingX
+korby = newKingY
+ kb();
+if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+ context.save();
+// Сначала перемещаем контекст в нужную позицию
+context.translate(5 * grid + grid / 2, 0);
+// Затем переворачиваем по оси Y
+context.scale(1, -1);
+// Теперь рисуем текст (фигура)
+context.fillStyle = '#FF6600';
+context.font = grid + 'px Courier New';
+// Обратите внимание на изменение координат Y
+context.fillText('\u265C', 0, 0, grid, grid); // здесь 0, 0
+context.restore();
+ }else{
+    context.fillStyle = '#FF6600';
+context.font = grid + 'px Courier New';
+// Обратите внимание на изменение координат Y
+context.fillText('\u265C', 5 * grid + grid / 2, grid, grid, grid); // здесь 0, 0
+ }
+  n();
+    r = (r + 1) % 2; // Смена хода только если игра не окончена
+    mat(); 
+    }
+}
+
+if (poz == 12.5 && a[7][0] == 8.5 && a[7][1] == 0 && a[7][2] == 0 && a[7][3] == 0 &&  Math.floor(el.offsetY/grid) == 7 && Math.floor(el.offsetX/grid) == 2  ){
+
+
+    // Устанавливаем новое положение короля
+    const newKingX = Math.floor(el.offsetY / grid);
+    const newKingY = Math.floor(el.offsetX / grid);
+
+    // Проверяем шах для короля после предполагаемого движения
+    if (!isKingInCheck(7, 3, a) && !isKingInCheck(7, 4, a) && !isKingInCheck(newKingX, newKingY, a) ) {
+a[7][4] = 0
+a[7][0] = 0
+a[7][2] = 12
+a[7][3] = 8
+korx= newKingX
+kory= newKingY
+ k();
+context.fillStyle = '#CC66FF';
+context.font = grid + 'px Courier New';
+context.fillText('\u2656',  3 * grid+grid/2, grid + 7 * grid, grid, grid);
+  n();
+    r = (r + 1) % 2; // Смена хода только если игра не окончена
+    mat(); 
+    }
+}
+if (poz == 12.5 && a[7][7] == 8.5 && a[7][5] == 0 && a[7][6] == 0 &&  Math.floor(el.offsetY/grid) == 7 && Math.floor(el.offsetX/grid) == 6  ){
+ 
+
+    // Устанавливаем новое положение короля
+    const newKingX = Math.floor(el.offsetY / grid);
+    const newKingY = Math.floor(el.offsetX / grid);
+
+    // Проверяем шах для короля после предполагаемого движения
+    if (!isKingInCheck(newKingX, newKingY, a) && !isKingInCheck(7, 4, a) && !isKingInCheck(7, 5, a)) {
+a[7][4] = 0
+a[7][7] = 0
+a[7][6] = 12
+a[7][5] = 8
+korx= newKingX
+kory= newKingY
+ k();
+context.fillStyle = '#CC66FF';
+context.font = grid + 'px Courier New';
+context.fillText('\u2656',  5 * grid+grid/2, grid + 7 * grid, grid, grid);
+  n();
+    r = (r + 1) % 2; // Смена хода только если игра не окончена
+    mat(); 
+    }
+}
+
+
+c();
+
+
+
+
+
+
+
+
+
+
+
+
+}
+}
+
+}
+
+function loop() {
+    rAF = requestAnimationFrame(loop);
+
+showScore()
+    if ((poz == 6 || poz == 5.5) && r == 1){
+    //v2()
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+    context.fillStyle = '#20B2AA';
+
+context.fillRect( pozy * grid,  pozx * grid +grid*7/8, grid, grid/8);
+    } else {
+        context.fillStyle = '#20B2AA';
+
+context.fillRect( pozy * grid,  pozx * grid, grid, grid/8);
+    }
+} else 
+if ((poz == 12 || poz == 12.5) && r == 0){
+   // v2()
+    context.fillStyle = '#20B2AA';
+
+context.fillRect( pozy * grid,  pozx * grid, grid, grid/8);
+} else { 
+  
+    shag()
+}
+}
+rAF = requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>

@@ -1,0 +1,875 @@
+<html>
+     <head>
+<meta charset="Utf-8">
+<link rel="icon" type="image/png" href="/favicon.png" sizes="32x32" />
+	<title>Судоку</title>
+  <script type="module">
+    // Импорт необходимых функций из Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, updateDoc, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    const firebaseConfig = {
+    apiKey: "AIzaSyD90NTsd6knRycxFbpvyNWBPpD7XD5Ih70",
+    authDomain: "gaim-42aa5.firebaseapp.com",
+    databaseURL: "https://gaim-42aa5-default-rtdb.firebaseio.com",
+    projectId: "gaim-42aa5",
+    storageBucket: "gaim-42aa5.appspot.com",
+    messagingSenderId: "1036683439508",
+    appId: "1:1036683439508:web:b329b1257c9c89b3cef381",
+    measurementId: "G-5EE0W6HVJP"
+};
+
+// Инициализация Firebase
+let app;
+let auth;
+let db;
+var sac = 0
+var sac1 = localStorage.sud
+if (typeof window !== 'undefined') {
+    app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    auth = getAuth(app);
+    db = getFirestore(app); // Инициализация Firestore
+}
+async function getUserRecord(uid) {
+        const userRef = doc(db, 'user', uid);
+        const userDoc = await getDoc(userRef);
+        if (userDoc.exists()) {
+            return userDoc.data().sud; // Возвращаем значение record
+        }
+        return null; // Если документ не найден
+    }
+
+// Функция для получения uid пользователя
+async function getUserUID() {
+    const login = localStorage.getItem('login'); // Получаем логин из localStorage
+
+    if (login) {
+        try {
+            const userCollectionRef = collection(db, 'user');
+            const q = query(userCollectionRef, where('login', '==', login)); // Запрос для поиска документа с указанным логином
+            const querySnapshot = await getDocs(q);
+            
+            if (!querySnapshot.empty) {
+                let uid; // Объявляем переменную uid
+                querySnapshot.forEach((doc) => {
+                    const userData = doc.data();
+                    uid = userData.uid; // Получаем uid пользователя
+                });
+                return uid; // Возвращаем uid
+            } 
+        } catch (error) {
+            console.error('Ошибка при получении UID:', error);
+        }
+    }
+    return null; // Возвращаем null, если логин не найден
+}
+
+// Функция для обновления значения в Firestore
+async function updateUserScore(uid, newScore) {
+    const userRef = doc(db, 'user', uid);
+
+    try {
+        await updateDoc(userRef, { sud: newScore });
+    } catch (error) {
+        console.error('Ошибка при обновлении счета пользователя:', error);
+    }
+}
+
+// Функция для проверки и обновления значения s
+async function checkAndUpdateScore() {
+    const newScore = parseFloat(localStorage.getItem('sud')) || 0; // Получаем новое значение из localStorage
+    const uid = await getUserUID(); // Получаем uid
+
+    if (uid) {
+        const currentScore = await getUserRecord(uid); // Получаем текущее значение sud из базы данных
+        
+        // Проверка на пустое значение, ноль или пустую строку
+        if (currentScore === null || currentScore === 0 || currentScore === "") {
+            await updateUserScore(uid, 40); // Устанавливаем sud в 40
+        } else {
+            await updateUserScore(uid, newScore); // Обновляем значение на новое
+        }
+    }
+}
+
+
+async function checkAndUpdateScore1() {
+    const newScore = parseFloat(localStorage.getItem('sud')) || 0; // Получаем новое значение из localStorage
+    const uid = await getUserUID(); // Получаем uid
+
+    if (uid) {
+        const currentScore = await getUserRecord(uid); // Получаем текущее значение sud из базы данных
+        
+        // Проверка на пустое значение, ноль или пустую строку
+        if (currentScore === null || currentScore === 0 || currentScore === "") {
+            await updateUserScore(uid, 40); // Устанавливаем sud в 40
+        } 
+    }
+}
+checkAndUpdateScore1()
+async function initializeScore() {
+        const uid = await getUserUID();
+        if (uid) {
+            sac = await getUserRecord(uid); // Получаем значение record из базы данных
+        }
+       
+    }
+    initializeScore() 
+
+    
+function loop() {
+    rAF = requestAnimationFrame(loop);
+    
+    if (sac > localStorage.sud && sac1 !== localStorage.sud){
+      sac1 = localStorage.sud
+        checkAndUpdateScore(); 
+
+    }
+
+}
+
+
+rAF = requestAnimationFrame(loop);
+</script>
+	<style>
+	html,
+	body {
+	height: 100%;
+	margin: 0;
+  
+	}
+	body {
+	background: black;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+		touch-action: none;
+	}
+	canvas{
+	border: 1px solid white;
+	}
+	</style>
+      </head>
+<body>
+
+<canvas   id="game"></canvas>
+
+
+<script>
+  var canvas = document.getElementById('game');
+  var context = canvas.getContext('2d');
+  
+   
+  
+  
+  var grid;
+  
+  
+  if (document.documentElement.clientWidth >document.documentElement.clientHeight){
+  grid = Math.floor(document.documentElement.clientHeight/11);
+  } else {
+  grid = Math.floor(document.documentElement.clientWidth/11);
+  }
+  
+  function getRandomInt(min, max){
+  return Math.floor(Math.random() * (max - min)) + min;
+  }
+  
+  
+  var k = 0;
+  var r = 3;
+  
+  var rand = 40;
+  var t = 0;
+  var sud = Number.MAX_SAFE_INTEGER;
+  var timer = setInterval(()=> t++,1000);
+  
+  if (localStorage.sud > 0 && localStorage.sud < 81){
+  rand = localStorage.sud;
+  } else {
+  localStorage.sud = rand
+  }
+  if (localStorage.sud > 0 && localStorage.sud < 2 ){
+  sud = localStorage.sud * 10000;
+  }
+  if(rand < 2){
+    rand = getRandomInt(19, 35);
+  }
+  
+  var q = rand;
+  
+  
+  
+  
+  
+  //отношение сторон 
+  var w = 9;
+  var h = 11;
+  
+  canvas.width = w * grid;
+  canvas.height = h * grid;
+  
+  var o1 = [];
+  for (let i = 0; i < 9; i++){
+  o1[i] = 0;
+  }
+  
+  var a = [];
+  for (let i = 0; i < w+2; i++){
+   let row = [];
+  for (let j = 0; j < h+2; j++){
+  if (j < 9){
+  
+  if (((i < 3 || i > 5) && (j < 3 || j > 5)) || (i>2&& i<6 && j>2&& j<6 )){
+  context.fillStyle = '#ffccff';
+  context.fillRect(i * grid, j* grid, grid - 1  , grid - 1  );
+  } else {
+  context.fillStyle = '#e0ffff';
+  context.fillRect(i * grid, j* grid, grid - 1  , grid - 1  );
+  }
+  
+  }
+  row.push(0);
+  
+  }
+  a.push(row);
+  }
+  
+  
+  
+  
+  
+  
+  // Функция для генерации случайного числа в заданном диапазоне
+  function getRandomNumber(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+  
+  // Функция для проверки, можно ли разместить число в данной позиции
+  function canPlaceNumber(array, row, col, num) {
+    // Проверяем строку на наличие повторяющихся чисел
+    for (let i = 0; i < 9; i++) {
+      if (array[row][i] === num) {
+        return false;
+      }
+    }
+  
+    // Проверяем столбец на наличие повторяющихся чисел
+    for (let i = 0; i < 9; i++) {
+      if (array[i][col] === num) {
+        return false;
+      }
+    }
+  
+    // Определяем начальные индексы квадрата 3x3
+    const startRow = Math.floor(row / 3) * 3;
+    const startCol = Math.floor(col / 3) * 3;
+  
+    // Проверяем квадрат 3x3 на наличие повторяющихся чисел
+    for (let i = startRow; i < startRow + 3; i++) {
+      for (let j = startCol; j < startCol + 3; j++) {
+        if (array[i][j] === num) {
+          return false;
+        }
+      }
+    }
+  
+    return true;
+  }
+  
+  // Функция для заполнения массива случайными числами с учетом правил игры судоку
+  function fillSudokuArray(array, row = 0, col = 0) {
+    // Если достигнут конец строки, переходим на следующую строку
+    if (col === 9) {
+      row++;
+      col = 0;
+    }
+  
+    // Если достигнут конец массива, значит, все числа были успешно размещены
+    if (row === 9) {
+      return true;
+    }
+  
+    // Создаем массив случайных чисел от 1 до 9
+    const randomNumbers = Array.from({ length: 9 }, (_, i) => i + 1);
+    
+    // Перемешиваем массив случайных чисел
+    for (let i = randomNumbers.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [randomNumbers[i], randomNumbers[j]] = [randomNumbers[j], randomNumbers[i]];
+    }
+  
+    // Пробуем разместить каждое число из перемешанного массива в текущей позиции
+    for (const num of randomNumbers) {
+      if (canPlaceNumber(array, row, col, num)) {
+        array[row][col] = num;
+  
+        // Рекурсивно заполняем следующую позицию
+        if (fillSudokuArray(array, row, col + 1)) {
+          return true;
+        }
+  
+        // Если следующая позиция не может быть заполнена, сбрасываем текущую позицию
+        array[row][col] = 0;
+      }
+    }
+  
+    return false;
+  }
+  
+  // Создаем двумерный массив размером 9x9
+  const sudokuArray = new Array(9).fill().map(() => new Array(9).fill(0));
+  
+  // Заполняем массив случайными числами с учетом правил игры судоку
+  fillSudokuArray(sudokuArray);
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  for (let i = 1; i < w+1; i++){
+   for (let j = 1; j < h-1; j++){
+  
+  
+   a[i][j] = sudokuArray[i-1][j-1]
+  
+  
+  
+  
+   }
+   }
+  
+  
+  
+  
+  
+  
+  
+  
+  var b = [];
+  for (let i = 0; i < 9; i++){
+   let row = [];
+  for (let j = 0; j < 9; j++){
+  
+  
+  row.push(0);
+  
+  }
+  b.push(row);
+  }
+  
+  
+  var c = [];
+  for (let i = 0; i < w+2; i++){
+   let row = [];
+  for (let j = 0; j < h+2; j++){
+  
+  
+  row.push(0);
+  
+  }
+  c.push(row);
+  }
+  
+  var p = 0;
+  do{
+  let x =getRandomInt(1, w+1);
+  let y = getRandomInt(1, h-1)
+  if (b[y-1][x-1] == 0){
+  p++;
+  b[y-1][x-1] = a[x][y];
+  c[x][y] = 1;
+  context.font = grid +'px monospace';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.fillStyle = 'gray';
+  context.fillText(b[y-1][x-1], (x-0.5)* grid, (y-0.5) * grid);
+  }
+  }while (p < rand);
+  
+  
+  // Функция для проверки валидности массива судоку
+  function isValidSudoku(array) {
+    // Проверка строк
+    for (let i = 0; i < 9; i++) {
+      const seen = new Set();
+      for (let j = 0; j < 9; j++) {
+        const num = array[i][j];
+        if (num < 0 || num > 9) {
+          return false; // Число вне допустимого диапазона
+        }
+        if (num !== 0) { // Пропускаем пустые клетки
+          if (seen.has(num)) {
+            return false; // Найдено повторяющееся число
+          }
+          seen.add(num);
+        }
+      }
+    }
+  
+    // Проверка столбцов
+    for (let j = 0; j < 9; j++) {
+      const seen = new Set();
+      for (let i = 0; i < 9; i++) {
+        const num = array[i][j];
+        if (num < 0 || num > 9) {
+          return false; // Число вне допустимого диапазона
+        }
+        if (num !== 0) {
+          if (seen.has(num)) {
+            return false; // Найдено повторяющееся число
+          }
+          seen.add(num);
+        }
+      }
+    }
+  
+    // Проверка квадратов 3x3
+    for (let startRow = 0; startRow < 9; startRow += 3) {
+      for (let startCol = 0; startCol < 9; startCol += 3) {
+        const seen = new Set();
+        for (let i = 0; i < 3; i++) {
+          for (let j = 0; j < 3; j++) {
+            const num = array[startRow + i][startCol + j];
+            if (num < 0 || num > 9) {
+              return false; // Число вне допустимого диапазона
+            }
+            if (num !== 0) {
+              if (seen.has(num)) {
+                return false; // Найдено повторяющееся число
+              }
+              seen.add(num);
+            }
+          }
+        }
+      }
+    }
+  
+    // Проверка на возможность решения судоку
+    return canSolveSudoku(array);
+  }
+  
+  function canSolveSudoku(board) {
+    const findEmpty = (board) => {
+      for (let row = 0; row < 9; row++) {
+        for (let col = 0; col < 9; col++) {
+          if (board[row][col] === 0) {
+            return [row, col]; // Возвращаем первую пустую клетку
+          }
+        }
+      }
+      return null; // Если пустых клеток нет
+    };
+  
+    const isValid = (board, num, row, col) => {
+      // Проверка строки
+      for (let i = 0; i < 9; i++) {
+        if (board[row][i] === num) return false;
+      }
+      // Проверка столбца
+      for (let i = 0; i < 9; i++) {
+        if (board[i][col] === num) return false;
+      }
+      // Проверка 3x3 квадрата
+      const startRow = Math.floor(row / 3) * 3;
+      const startCol = Math.floor(col / 3) * 3;
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          if (board[startRow + i][startCol + j] === num) return false;
+        }
+      }
+      return true;
+    };
+  
+    const solve = (board) => {
+      const empty = findEmpty(board);
+      if (!empty) return true; // Если пустых клеток нет, судоку решено
+  
+      const [row, col] = empty;
+      for (let num = 1; num <= 9; num++) {
+        if (isValid(board, num, row, col)) {
+          // Пробуем число
+          board[row][col] = num;
+  
+          if (solve(board)) {
+            return true; // Если решено, возвращаем true
+          }
+  
+          board[row][col] = 0; // Возвращаемся назад
+        }
+      }
+      return false; // Если не нашли решение
+    };
+  
+    return solve(JSON.parse(JSON.stringify(board))); // Копируем доску, чтобы не модифицировать оригинал
+  }
+  
+  // Пример использования функции
+  
+  
+  
+  
+  
+  var b1 = [];
+  for (let i = 0; i < 9; i++) {
+      let row = [];
+      for (let j = 0; j < 9; j++) {
+          row.push(b[i][j]); // Копируем значение из b в b1
+      }
+      b1.push(row);
+  }
+  
+  
+  
+  
+  
+  
+  
+  
+  for (let i = 0; i < w+2; i++){
+  a[i][10]= 10
+  context.font = grid +'px monospace';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.fillStyle = 'black';
+  context.fillText(i, (i-0.5)* grid, 10.5 * grid);
+  context.fillStyle = '#e0ffff';
+  context.fillRect(i * grid, 10* grid, grid - 1  , grid - 1  );
+  
+  }
+  
+  
+  
+  
+  
+  
+  
+  
+  var gameOver = false;
+  var win = false;
+  function showGameOver(){
+  gameOver = true;
+  
+  context.fillStyle = 'black';
+  context.globalAlpha = 0.75;
+  context.fillRect(0, canvas.height / 2 - grid , canvas.width, grid*2);
+  context.globalAlpha = 1;
+  context.fillStyle = 'white';
+  context.font = grid +'px monospace';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  if (localStorage.sud>=2){ 
+  context.fillText('GAME OVER! '+rand+'+1', canvas.width / 2, canvas.height / 2);
+  
+  localStorage.sud++;
+  } else {
+    context.fillText('GAME OVER!', canvas.width / 2, canvas.height / 2);
+  }
+  }
+  function showWin(){
+  win = true;
+  
+  context.fillStyle = 'black';
+  context.globalAlpha = 0.75;
+  context.fillRect(0, canvas.height / 2 - grid , canvas.width, grid*2);
+  context.globalAlpha = 1;
+  context.fillStyle = 'white';
+  context.font = grid +'px monospace';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  if (localStorage.sud>=2){ 
+
+  context.fillText('WIN! '+rand+'-1', canvas.width / 2, canvas.height / 2);
+  
+  localStorage.sud--;
+  }else if (localStorage.sud<2 && t < sud){
+
+    context.fillText('WIN!', canvas.width / 2, canvas.height / 2);
+  localStorage.sud = t/10000;
+  }else if (localStorage.sud<2 ){
+
+    context.fillText('WIN!', canvas.width / 2, canvas.height / 2);
+
+  }
+  }
+  
+  //////
+  
+  
+  
+  function loop() {
+  
+  rAF = requestAnimationFrame(loop);
+  
+  
+  
+  
+  
+  
+  if (!gameOver && !win ){
+  
+  for (let i = 0; i < 9; i++){
+  if (o1[i] == k){
+  
+  k = 0
+    }
+  }
+  
+  
+  
+  for (let i = 1; i < w+1; i++){
+  for (let j = 1; j < h-1; j++){
+    context.font = grid +'px monospace';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  if (b[j-1][i-1] == k  && k !== 0){
+  
+  context.fillStyle = '#9911ff';
+  context.fillText(k, (i-0.5)* grid, (j-0.5) * grid);
+  } else if (b[j-1][i-1] !== k && b[j-1][i-1] > 0 && c[i][j] !== 1){
+    context.fillStyle = 'black';
+    context.fillText(b[j-1][i-1], (i-0.5)* grid, (j-0.5) * grid);
+  } else if (b[j-1][i-1] !== k && c[i][j] > 0 ) {
+    context.fillStyle = 'grey';
+    context.fillText(b[j-1][i-1], (i-0.5)* grid, (j-0.5) * grid);
+  } 
+    
+  }
+  }
+  
+  
+  
+  
+  
+  function showLoop(){
+  
+  
+  context.clearRect( 0,   9*grid , canvas.width, grid);
+  context.fillStyle = 'white';
+  context.font = grid +'px monospace';
+  if (localStorage.sud<2){ 
+      context.font = grid/2 +'px monospace';
+  if (t >=  0){
+  
+  if (t<60){
+    if (localStorage.sud == 1){
+  context.fillText(t,  2* grid, 9.5 * grid);
+  } else {
+  context.fillText(t+'/'+ Math.floor(sud/60)+':'+(sud%60),  2* grid, 9.5 * grid);
+  }
+  } else {
+    if (localStorage.sud == 1){
+  context.fillText(Math.floor(t/60)+':'+Math.floor(t%60),  2* grid, 9.5 * grid);
+  } else {
+  context.fillText(Math.floor(t/60)+':'+Math.floor(t%60)+'/'+Math.floor(sud/60)+':'+Math.floor(sud%60),  2* grid, 9.5 * grid);
+  }
+  }
+  context.font = grid/2 +'px monospace';
+  
+  
+  }
+  } else { 
+      context.font = grid +'px monospace';
+    context.fillText(rand,  2* grid, 9.5 * grid);
+  }
+  
+  
+  context.font = grid*0.75+'px monospace';
+  if (r == 1){
+      
+  context.fillText('♥',  (7.9 * grid) , 9.5 * grid);
+  } else if (r == 2) {
+      
+  context.fillText('♥♥',  (7.9 * grid) , 9.5 * grid);
+  }else if (r == 3) {
+      
+  context.fillText('♥♥♥',  (7.9 * grid) , 9.5 * grid);
+  }
+  
+  }
+    
+  showLoop();
+  
+  }
+  
+  
+  
+  }
+  document.onclick = (el) => {
+  
+  if (!gameOver && !win ){
+  
+  
+  
+  let i = Math.floor(el.offsetX/grid) + 1;
+  let j = Math.floor(el.offsetY/grid) + 1;
+  
+  context.font = grid +'px monospace';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  
+  
+  
+  
+  if (j  == 11 && i >= 1  && i < 10){
+  
+    if (k === i){
+    k = 0
+    for (let i = 0; i < w+2; i++){
+  context.fillStyle = '#e0ffff';
+  context.fillRect((i - 1) * grid, (j - 1)* grid, grid - 1  , grid - 1  );
+  context.fillStyle = 'black';
+  context.fillText(i, (i-0.5)* grid, 10.5 * grid);
+  }
+   } else { 
+  if (o1[i-1] !== i){
+  k = i
+  
+  
+  for (let i = 0; i < w+2; i++){
+  context.fillStyle = '#e0ffff';
+  context.fillRect((i - 1) * grid, (j - 1)* grid, grid - 1  , grid - 1  );
+  context.fillStyle = 'black';
+  context.fillText(i, (i-0.5)* grid, 10.5 * grid);
+  }
+  context.fillStyle = '#ffccff';
+  context.fillRect((i - 1) * grid, (j - 1)* grid, grid - 1  , grid - 1  );
+  context.fillStyle = 'black';
+  context.fillText(i, (i-0.5)* grid, 10.5 * grid);
+   } 
+  
+   }
+   
+  }
+  
+  
+  
+  if (j > 0 && j <= b.length && i > 0 && i <= b[0].length &&  c[i][j]==0) {
+      if (j < 10 && k > 0 && (b[j-1][i-1] == 0 ) && b[j-1][i-1] !== k && b1[j-1][i-1] !== k) {
+          b[j-1][i-1] = k;
+          b1[j-1][i-1] = k;
+          if (j < 10 && (((i < 4 || i > 6) && (j < 4 || j > 6)) || (i > 3 && i < 7 && j > 3 && j < 7))) {
+              context.fillStyle = '#ffccff';
+              context.fillRect((i - 1) * grid, (j - 1) * grid, grid - 1, grid - 1);
+          } else {
+              context.fillStyle = '#e0ffff';
+              context.fillRect((i - 1) * grid, (j - 1) * grid, grid - 1, grid - 1);
+          }
+          if (isValidSudoku(b)) {
+            c[i][j]=1
+            q++;
+              context.fillStyle = '#9911ff';
+              context.fillText(k, (i - 0.5) * grid, (j - 0.5) * grid);
+          } else {
+            b[j-1][i-1] = 0;
+            
+              context.font = grid + 'px monospace';
+              context.textAlign = 'center';
+              context.textBaseline = 'middle';
+              context.fillStyle = 'red';
+              context.fillText(k, (i - 0.5) * grid, (j - 0.5) * grid);
+              r--;
+              context.clearRect(7 * grid, 9 * grid, canvas.width, grid);
+              context.fillStyle = 'white';
+              context.font = grid + 'px monospace';
+          }
+      } else if (b1[j-1][i-1] == k ) {
+          b1[j-1][i-1] = 0;
+          if (j < 10 && (((i < 4 || i > 6) && (j < 4 || j > 6)) || (i > 3 && i < 7 && j > 3 && j < 7))) {
+              context.fillStyle = '#ffccff';
+              context.fillRect((i - 1) * grid, (j - 1) * grid, grid - 1, grid - 1);
+          } else {
+              context.fillStyle = '#e0ffff';
+              context.fillRect((i - 1) * grid, (j - 1) * grid, grid - 1, grid - 1);
+          }
+      }
+  }
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  var o = 0;
+  
+  for (let i = 1; i < w+1; i++){
+  for (let j = 1; j < h-1; j++){
+  
+  
+  if (b[j-1][i-1] == k){
+  o++
+  }
+  }
+  }
+  
+  if (o == 9){
+  o1[k-1] = k;
+   
+  }
+  
+  for (let i = 0; i < 9; i++){
+  if (o1[i] !== 0){
+      context.font = grid +'px monospace';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+    context.fillStyle = '#e0ffff';
+  context.fillRect((i) * grid, (10)* grid, grid - 1  , grid - 1  );
+  context.fillStyle = 'grey';
+    context.fillText(o1[i], (o1[i]-0.5)* grid, (10.5) * grid);
+  
+    }
+  }
+  
+  
+  if (q == 81){
+  showWin();
+  }
+  
+  
+  if (r == 0){
+  showGameOver();
+  }
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  }
+  }
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+   rAF = requestAnimationFrame(loop);
+  
+  
+  
+  </script>
+</body>
+
+</html>

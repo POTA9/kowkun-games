@@ -1,0 +1,2025 @@
+<html>
+<head>
+<meta charset="Utf-8">
+    <link rel="icon" type="image/png" href="/favicon.png" sizes="32x32" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	<title>Лаберинт ДЯТЛОВА</title>
+<style>
+    html,
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
+    body {
+        background: linear-gradient(135deg, #0c0c0c, #1a1a1a);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        touch-action: none;
+        min-height: 100vh;
+        min-height: 100dvh; /* Для мобильных браузеров */
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        overflow-x: hidden;
+    }
+    
+    canvas {
+        border: 1px solid white;
+        max-width: 100%;
+        height: auto;
+        display: block;
+    }
+    
+    /* Контейнер игры */
+    .game-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: clamp(15px, 4vw, 25px);
+        width: 100%;
+        max-width: min(95vw, 800px);
+        padding: clamp(10px, 3vw, 20px);
+        margin: 0 auto;
+    }
+    
+    /* Выбор режима */
+    .mode-selection {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: clamp(20px, 5vw, 30px);
+        width: 100%;
+        padding: clamp(15px, 4vw, 25px);
+    }
+    
+    .mode-title {
+        font-size: clamp(1.8rem, 8vw, 3rem);
+        font-weight: 300;
+        color: white;
+        text-align: center;
+        margin-bottom: clamp(5px, 2vw, 10px);
+        text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        letter-spacing: clamp(1px, 0.5vw, 2px);
+        line-height: 1.2;
+    }
+    
+    .mode-options {
+        display: flex;
+        gap: clamp(15px, 4vw, 25px);
+        justify-content: center;
+        flex-wrap: wrap;
+        width: 100%;
+    }
+    
+    .mode-option {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: clamp(15px, 3vw, 20px);
+        padding: clamp(20px, 4vw, 30px);
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: clamp(10px, 2vw, 15px);
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        width: min(90vw, 200px);
+        min-height: min(40vw, 180px);
+        color: white;
+        text-align: center;
+        backdrop-filter: blur(10px);
+    }
+    
+    .mode-option:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+    
+    .mode-icon {
+        font-size: clamp(2.5rem, 12vw, 4rem);
+        margin-bottom: clamp(3px, 1vw, 5px);
+    }
+    
+    .mode-name {
+        font-size: clamp(1rem, 4.5vw, 1.4rem);
+        font-weight: 500;
+    }
+    
+    .mode-description {
+        text-align: center;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: clamp(0.8rem, 3.5vw, 1rem);
+        line-height: 1.4;
+    }
+    
+    /* Настройка онлайн-режима */
+    .online-setup {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: clamp(15px, 4vw, 25px);
+        width: 100%;
+        max-width: min(95vw, 500px);
+        color: white;
+        padding: clamp(15px, 4vw, 25px);
+    }
+    
+    .online-title {
+        font-size: clamp(1.4rem, 6vw, 2rem);
+        font-weight: 300;
+        text-align: center;
+        margin-bottom: clamp(8px, 2vw, 12px);
+    }
+    
+    .game-controls {
+        display: flex;
+        flex-direction: column;
+        gap: clamp(12px, 3vw, 18px);
+        margin-bottom: clamp(10px, 3vw, 15px);
+        width: 100%;
+        align-items: center;
+    }
+    
+    .btn {
+        padding: clamp(10px, 3vw, 14px) clamp(20px, 4vw, 28px);
+        background: linear-gradient(135deg, #668aff, #00aeff);
+        border: none;
+        border-radius: clamp(6px, 1.5vw, 10px);
+        color: white;
+        cursor: pointer;
+        font-size: clamp(0.9rem, 3.5vw, 1.1rem);
+        transition: all 0.3s ease;
+        font-weight: 600;
+        width: min(90%, 250px);
+        text-align: center;
+    }
+    
+    .btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 15px rgba(102, 138, 255, 0.5);
+    }
+    
+    .btn:active {
+        transform: scale(0.98);
+    }
+    
+    .btn:disabled {
+        background: #666;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+    
+    .btn.secondary {
+        background: linear-gradient(135deg, #FF66FF, #CC66FF);
+    }
+    
+    input {
+        padding: clamp(10px, 3vw, 14px);
+        border-radius: clamp(6px, 1.5vw, 10px);
+        border: 2px solid #333;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        font-size: clamp(0.9rem, 3.5vw, 1.1rem);
+        width: min(90%, 250px);
+        text-align: center;
+    }
+    
+    input::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+    }
+    
+    .game-id-display {
+        margin: clamp(8px, 2vw, 12px) 0;
+        font-size: clamp(1rem, 4vw, 1.3rem);
+        background: rgba(255, 255, 255, 0.1);
+        padding: clamp(10px, 3vw, 14px) clamp(15px, 3vw, 20px);
+        border-radius: clamp(6px, 1.5vw, 10px);
+        text-align: center;
+        word-break: break-all;
+    }
+    
+    .waiting-message {
+        margin: clamp(8px, 2vw, 12px) 0;
+        font-size: clamp(1rem, 4vw, 1.3rem);
+        color: #00ff88;
+        animation: pulse 2s infinite;
+        text-align: center;
+    }
+    
+    .error-message {
+        color: #ff4757;
+        margin: clamp(8px, 2vw, 12px) 0;
+        text-align: center;
+        font-size: clamp(0.9rem, 3.5vw, 1.1rem);
+    }
+    
+    .back-btn {
+        position: fixed;
+        top: clamp(10px, 3vw, 20px);
+        left: clamp(10px, 3vw, 20px);
+        background: rgba(255, 255, 255, 0.1);
+        border: none;
+        border-radius: clamp(6px, 1.5vw, 10px);
+        color: white;
+        padding: clamp(8px, 2vw, 12px) clamp(12px, 3vw, 18px);
+        cursor: pointer;
+        font-size: clamp(0.9rem, 3.5vw, 1.1rem);
+        transition: all 0.3s ease;
+        z-index: 1000;
+        backdrop-filter: blur(10px);
+    }
+    
+    .back-btn:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+    
+    .hidden {
+        display: none !important;
+    }
+
+    /* Ориентация экрана */
+    @media (max-height: 500px) and (orientation: landscape) {
+        body {
+            align-items: flex-start;
+            padding: 10px 0;
+        }
+        
+        .game-container {
+            gap: 10px;
+        }
+        
+        .mode-options {
+            flex-direction: row;
+            gap: 10px;
+        }
+        
+        .mode-option {
+            width: 150px;
+            min-height: 120px;
+            padding: 15px;
+            gap: 8px;
+        }
+        
+        .mode-icon {
+            font-size: 2rem;
+        }
+        
+        .mode-name {
+            font-size: 1rem;
+        }
+        
+        .mode-description {
+            font-size: 0.8rem;
+        }
+    }
+
+    /* Очень большие экраны */
+    @media (min-width: 1600px) {
+        .game-container {
+            max-width: 1200px;
+        }
+        
+        .mode-option {
+            width: 250px;
+            min-height: 220px;
+        }
+        
+        .online-setup {
+            max-width: 600px;
+        }
+    }
+
+    /* Поддержка темной темы */
+    @media (prefers-color-scheme: light) {
+        body {
+            background: linear-gradient(135deg, #2c2c2c, #3a3a3a);
+        }
+    }
+
+    /* Улучшения для касаний на мобильных */
+    @media (hover: none) {
+        .mode-option:hover {
+            transform: none;
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .btn:hover {
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .mode-option:active,
+        .btn:active {
+            transform: scale(0.95);
+        }
+    }
+
+    /* Предотвращение выделения текста */
+    .no-select {
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+
+    /* Улучшения производительности */
+    .will-change {
+        will-change: transform;
+    }
+
+    @keyframes pulse {
+        0% { opacity: 0.6; }
+        50% { opacity: 1; }
+        100% { opacity: 0.6; }
+    }
+
+    @keyframes winnerGlow {
+        0% { 
+            transform: scale(1); 
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5); 
+        }
+        50% { 
+            transform: scale(1.05); 
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.8); 
+        }
+        100% { 
+            transform: scale(1); 
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5); 
+        }
+    }
+
+    /* Плавная прокрутка */
+    html {
+        scroll-behavior: smooth;
+    }
+
+    /* Фолбэк для старых браузеров */
+    @supports not (backdrop-filter: blur(10px)) {
+        .mode-option,
+        .back-btn {
+            background: rgba(255, 255, 255, 0.08);
+        }
+    }
+</style>
+</head>
+<body>
+	<button class="back-btn hidden" id="backBtn">← Назад</button>
+	
+	<div class="game-container">
+		<!-- Экран выбора режима игры -->
+		<div class="mode-selection" id="modeSelection">
+			<h2 class="mode-title">Выберите режим игры</h2>
+			<div class="mode-options">
+				<div class="mode-option" id="localMode">
+					<div class="mode-icon">👥</div>
+					<div class="mode-name">На одном устройстве</div>
+					<div class="mode-description">Играйте вдвоем на одном устройстве</div>
+				</div>
+				<div class="mode-option" id="onlineMode">
+					<div class="mode-icon">🌐</div>
+					<div class="mode-name">Онлайн игра</div>
+					<div class="mode-description">Играйте с другом через интернет</div>
+				</div>
+			</div>
+		</div>
+		
+		<!-- Экран настройки онлайн игры -->
+		<div class="online-setup hidden" id="onlineSetup">
+			<h2 class="online-title">Онлайн игра</h2>
+			<div class="game-controls">
+				<button class="btn" id="createGame">Создать игру</button>
+				<button class="btn secondary" id="joinGame">Присоединиться</button>
+				<input type="text" id="gameIdInput" placeholder="ID игры">
+			</div>
+			
+			<div id="gameIdDisplay" class="game-id-display" style="display: none;"></div>
+			<div id="waitingMessage" class="waiting-message" style="display: none;">Ожидание второго игрока...</div>
+			<div id="errorMessage" class="error-message"></div>
+		</div>
+		
+		<!-- Игровое поле -->
+		<canvas id="game" class="hidden"></canvas>
+	</div>
+
+	<script type="module">
+		import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+		import { getDatabase, ref, set, onValue, update, get, remove } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+		
+		const firebaseConfig = {
+			apiKey: "AIzaSyD90NTsd6knRycxFbpvyNWBPpD7XD5Ih70",
+			authDomain: "gaim-42aa5.firebaseapp.com",
+			databaseURL: "https://gaim-42aa5-default-rtdb.firebaseio.com",
+			projectId: "gaim-42aa5",
+			storageBucket: "gaim-42aa5.appspot.com",
+			messagingSenderId: "1036683439508",
+			appId: "1:1036683439508:web:b329b1257c9c89b3cef381",
+			measurementId: "G-5EE0W6HVJP"
+		};
+
+		const app = initializeApp(firebaseConfig);
+		const database = getDatabase(app);
+		
+		// Глобальные переменные игры
+		let gameId = null;
+		let playerNumber = null;
+		let gameRef = null;
+		let gameMode = null;
+		let isMakingMove = false;
+		let gameActive = true;
+		let isTurnChanging = false; // ← ДОБАВЬТЕ ЭТУ ПЕРЕМЕННУЮ
+		let gameFinished = false; 
+		// DOM элементы
+		const canvas = document.getElementById('game');
+		const context = canvas.getContext('2d');
+		const createGameBtn = document.getElementById('createGame');
+		const joinGameBtn = document.getElementById('joinGame');
+		const gameIdInput = document.getElementById('gameIdInput');
+		const gameIdDisplay = document.getElementById('gameIdDisplay');
+		const waitingMessage = document.getElementById('waitingMessage');
+		const errorMessage = document.getElementById('errorMessage');
+		const modeSelection = document.getElementById('modeSelection');
+		const onlineSetup = document.getElementById('onlineSetup');
+		const backBtn = document.getElementById('backBtn');
+		const localModeBtn = document.getElementById('localMode');
+		const onlineModeBtn = document.getElementById('onlineMode');
+		
+		// Константы для игрового поля
+		const FIXED_GRID_SIZE = 25; // Фиксированный размер клетки
+		const FIXED_WIDTH = 30;     // Фиксированная ширина в клетках
+		const FIXED_HEIGHT = 30;    // Фиксированная высота в клетках
+		
+		// Переменные игры
+		let grid, w, h;
+		let snake, win, win1, next, sten;
+		let q, q1, q2, w1, w2, k, r, d, c, g, x1, y1, x2, y2;
+		let a = [], b = [];
+		
+		// Инициализация размеров canvas
+function initCanvas() {
+
+    const gridSize = 25;
+    const width = 30;
+    const height = 30;
+
+    canvas.width = width * gridSize;
+    canvas.height = height * gridSize;
+    
+    // Центрируем canvas на экране
+    canvas.style.margin = '0 auto';
+    canvas.style.display = 'block';
+    canvas.style.maxWidth = '100%';
+    canvas.style.height = 'auto';
+    
+    return { grid: gridSize, w: width, h: height };
+}
+		
+		// Инициализация игровых переменных
+		function initGameVariables() {
+  if (typeof a === 'undefined') a = [];
+    if (typeof b === 'undefined') b = [];
+
+        gameFinished = false;
+			const dimensions = initCanvas();
+			grid = dimensions.grid;
+			w = dimensions.w;
+			h = dimensions.h;
+			   // Инициализируем w1 и w2 ДО использования в findRandomPassableCell
+    w1 = getRandomInt(1, 3);
+    w2 = getRandomInt(1, 3);
+    
+    // Теперь инициализируем win и win1
+    win = findRandomPassableCell(w1);
+    win1 = findRandomPassableCell(w2)
+			// Инициализация позиций игроков
+			x1 = 0;
+			y1 = 0;
+			x2 = canvas.width - grid;
+			y2 = canvas.height - grid;
+			
+			// персонажи
+			snake = {
+				x: grid,
+				y: grid,
+				dx: 0,
+				dy: 0,
+			};
+
+			// победная клетка
+
+
+			//этажи
+			q = 1;
+			q1 = 1;
+			q2 = 1;
+
+
+
+			//буст
+			c = 99;
+			g = 0
+
+			// проверка спавна на игроке
+	
+
+			// стены 
+			sten = {
+				x: 0, 
+				y: 0
+			};
+
+			// переменные для смены хода и подсчёта ходов
+			k = 1;
+			r = getRandomInt(2, 13);
+			d = getRandomInt(10, 1000);
+			
+			// заполнение матрици случайными значениями от 0 до 1
+			a = [];
+			for (let i = 0; i < w; i++){
+				let row = [];
+				for (let j = 0; j < h; j++){
+					let randomValue;
+					// проверка на незамкнутость
+					if ((i == 0 && j == 0) || (i == w - 1 && j == h - 1) || (i == 0 && j == h - 1) || (i == w - 1 && j == 0)){
+						randomValue = 1;
+						row.push(randomValue);
+					} else{
+						randomValue = getRandomInt(0, d); 
+						if (randomValue == 1){
+							row.push(randomValue);
+						} else {
+							randomValue = 0;
+							row.push(randomValue);
+						}
+					}
+				}
+				a.push(row);
+			}
+
+			// проверка доступности выхода
+
+
+			// Дополнительная логика для матрицы a
+			for (let i = 0; i < w-1; i++){
+				for (let j = 0; j < h-1; j++){
+					if (a[i + 1][j] !== 1 &&  a[i][j + 1] !== 1 && a[i][j] == 1 ){
+						let z = getRandomInt(1, 3);
+						if (z == 1){
+							a[i + 1][j] = 1;
+						} else if (z == 2){
+							a[i][j + 1] = 1;
+						}
+					}
+				}
+			}
+
+			for (let i = w-1; i > 0; i--){
+				for (let j = 0; j < h-1; j++){
+					if (a[i - 1][j] !== 1 &&  a[i][j + 1] !== 1 && a[i][j] == 1 ){
+						let z = getRandomInt(1, 3);
+						if (z == 1){
+							a[i - 1][j] = 1;
+						} else if (z == 2){
+							a[i][j + 1] = 1;
+						}
+					}
+				}
+			}
+
+			for (let i = 0; i < w-1; i++){
+				for (let j = h-1; j > 0; j--){
+					if (a[i + 1][j] !== 1 &&  a[i][j - 1] !== 1 && a[i][j] == 1 ){
+						let z = getRandomInt(1, 3);
+						if (z == 1){
+							a[i + 1][j] = 1;
+						} else if (z == 2){
+							a[i][j - 1] = 1;
+						}
+					}
+				}
+			}
+
+			for (let i = w-1; i > 0; i--){
+				for (let j = h-1; j > 0; j--){
+					if (a[i - 1][j] !== 1 &&  a[i][j - 1] !== 1 && a[i][j] == 1 ){
+						let z = getRandomInt(1, 3);
+						if (z == 1){
+							a[i - 1][j] = 1;
+						} else if (z == 2){
+							a[i][j - 1] = 1;
+						}
+					}
+				}
+			}
+
+			// заполнение 2 матриц случайными значениями от 0 до 1
+			d = getRandomInt(10, 1000);
+
+			b = [];
+			for (let i = 0; i < w; i++){
+				let row = [];
+				for (let j = 0; j < h; j++){
+					let randomValue; 
+					if ((i == 0 && j == 0) || (i == w - 1 && j == h - 1) || (i == 0 && j == h - 1) || (i == w - 1 && j == 0)){
+						randomValue = 1;
+						row.push(randomValue);
+					} else{
+						randomValue = getRandomInt(0, d); 
+						if (randomValue == 1){
+							row.push(randomValue);
+						} else {
+							randomValue = 0;
+							row.push(randomValue);
+						}
+					}
+				}
+				b.push(row);
+			}
+
+
+
+			// Дополнительная логика для матрицы b
+			for (let i = 0; i < w-1; i++){
+				for (let j = 0; j < h-1; j++){
+					if (b[i + 1][j] !== 1 &&  b[i][j + 1] !== 1 && b[i][j] == 1 ){
+						let z = getRandomInt(1, 3);
+						if (z == 1){
+							b[i + 1][j] = 1;
+						} else if (z == 2){
+							b[i][j + 1] = 1;
+						}
+					}
+				}
+			}
+
+			for (let i = w-1; i > 0; i--){
+				for (let j = 0; j < h-1; j++){
+					if (b[i - 1][j] !== 1 &&  b[i][j + 1] !== 1 && b[i][j] == 1 ){
+						let z = getRandomInt(1, 3);
+						if (z == 1){
+							b[i - 1][j] = 1;
+						} else if (z == 2){
+							b[i][j + 1] = 1;
+						}
+					}
+				}
+			}
+
+			for (let i = 0; i < w-1; i++){
+				for (let j = h-1; j > 0; j--){
+					if (b[i + 1][j] !== 1 &&  b[i][j - 1] !== 1 && b[i][j] == 1 ){
+						let z = getRandomInt(1, 3);
+						if (z == 1){
+							b[i + 1][j] = 1;
+						} else if (z == 2){
+							b[i][j - 1] = 1;
+						}
+					}
+				}
+			}
+
+			for (let i = w-1; i > 0; i--){
+				for (let j = h-1; j > 0; j--){
+					if (b[i - 1][j] !== 1 &&  b[i][j - 1] !== 1 && b[i][j] == 1 ){
+						let z = getRandomInt(1, 3);
+						if (z == 1){
+							b[i - 1][j] = 1;
+						} else if (z == 2){
+							b[i][j - 1] = 1;
+						}
+					}
+				}
+			}
+	
+		if (win.x == 0 && win.y == 0){
+				let z = getRandomInt(1, 3);
+				if (z == 1){
+					win.x = getRandomInt(1, w) * grid;
+				} else if (z == 2){
+					win.y = getRandomInt(1, h) * grid;
+				}
+			}
+			
+			if (Math.floor(win1.x/grid) == w-1 && Math.floor(win1.y/grid) == h-1){
+				let z = getRandomInt(1, 3);
+				if (z == 1){
+					win1.x = getRandomInt(0, w-1) * grid;
+				} else if (z == 2){
+					win1.y = getRandomInt(0, h-1) * grid;
+				}
+			}
+
+			if (win.x == next.x && win.y == next.y && win1.x == next.x && win1.y == next.y){
+				let z = getRandomInt(1, 3);
+				if (z == 1){
+					next.x = getRandomInt(1, w) * grid;
+				} else if (z == 2){
+					next.y = getRandomInt(1, h) * grid;
+				}
+			}
+    
+    // Выход для игрока 2 (на этаже w2) должен быть проходим на своем этаже
+    // Выход для игрока 1 (на этаже w1) должен быть проходим на своем этаже
+win = findRandomPassableCell(w1);
+
+// Выход для игрока 2 (на этаже w2) должен быть проходим на своем этаже  
+win1 = findRandomPassableCell(w2);
+
+// Дополнительная проверка, чтобы выходы не спавнились в стартовых позициях
+let attempts = 0;
+const maxAttempts = 50;
+
+// Проверяем выход игрока 1
+while (attempts < maxAttempts && 
+       ((Math.floor(win.x/grid) === 0 && Math.floor(win.y/grid) === 0) ||
+        (Math.floor(win.x/grid) === w-1 && Math.floor(win.y/grid) === h-1))) {
+    win = findRandomPassableCell(w1);
+    attempts++;
+}
+
+attempts = 0;
+// Проверяем выход игрока 2
+while (attempts < maxAttempts && 
+       ((Math.floor(win1.x/grid) === 0 && Math.floor(win1.y/grid) === 0) ||
+        (Math.floor(win1.x/grid) === w-1 && Math.floor(win1.y/grid) === h-1))) {
+    win1 = findRandomPassableCell(w2);
+    attempts++;
+}
+    // Лестница - только там, где на обоих этажах нет стены
+    next = findRandomPassableCellOnBothFloors();
+
+// Дополнительная проверка, чтобы лестница не спавнилась на выходах
+
+while (attempts < maxAttempts && 
+       ((Math.floor(next.x/grid) === Math.floor(win.x/grid) && Math.floor(next.y/grid) === Math.floor(win.y/grid)) ||
+        (Math.floor(next.x/grid) === Math.floor(win1.x/grid) && Math.floor(next.y/grid) === Math.floor(win1.y/grid)))) {
+    next = findRandomPassableCellOnBothFloors();
+    attempts++;
+}
+		}
+		
+		// Добавь этот код после инициализации
+function setupResponsiveDesign() {
+    window.addEventListener('resize', updateLayout);
+    window.addEventListener('orientationchange', updateLayout);
+    updateLayout();
+}
+
+function updateLayout() {
+    // Адаптируем только интерфейс, игровое поле остается фиксированным
+    const isMobile = window.innerWidth <= 768;
+    
+    if (isMobile) {
+        document.body.style.padding = '10px';
+    } else {
+        document.body.style.padding = '20px';
+    }
+}
+
+// Вызови эту функцию в конце скрипта
+setupResponsiveDesign();
+		//функция рандома без запятой
+		function getRandomInt(min, max){
+			return Math.floor(Math.random() * (max - min)) + min;
+		}
+
+		// Обработчики выбора режима игры
+			localModeBtn.addEventListener('click', () => {
+			gameMode = 'local';
+			playerNumber = 1; // В локальной игре оба игрока на одном устройстве
+			gameActive = true;
+			showGameScreen();
+			initGameVariables();
+			initGame();
+		});
+		
+		onlineModeBtn.addEventListener('click', () => {
+			gameMode = 'online';
+			showOnlineSetup();
+		});
+		
+		// Кнопка возврата
+		backBtn.addEventListener('click', () => {
+			if (gameMode === 'online' && !canvas.classList.contains('hidden')) {
+				// Возврат из игры в онлайн настройки
+				hideGameScreen();
+				showOnlineSetup();
+			} else {
+				// Возврат к выбору режима
+				resetGame();
+				showModeSelection();
+			}
+		});
+		
+		// Функции для управления экранами
+		function showModeSelection() {
+			modeSelection.classList.remove('hidden');
+			onlineSetup.classList.add('hidden');
+			canvas.classList.add('hidden');
+			backBtn.classList.add('hidden');
+		}
+function showOnlineSetup() {
+    modeSelection.classList.add('hidden');
+    onlineSetup.classList.remove('hidden');
+    canvas.classList.add('hidden');
+    backBtn.classList.remove('hidden');
+    
+    // Фокус на поле ввода для мобильных устройств
+    if (window.innerWidth <= 768) {
+        setTimeout(() => {
+            gameIdInput.focus();
+        }, 300);
+    }
+}
+		
+		function showGameScreen() {
+			modeSelection.classList.add('hidden');
+			onlineSetup.classList.add('hidden');
+			canvas.classList.remove('hidden');
+			backBtn.classList.remove('hidden');
+		}
+		
+		function hideGameScreen() {
+			canvas.classList.add('hidden');
+		}
+		
+		// Создание игры
+// Создание игры
+createGameBtn.addEventListener('click', async () => {
+    try {
+        gameId = generateGameId();
+        playerNumber = 1;
+        gameActive = true;
+        
+        // Инициализация игры
+        initGameVariables();
+        initGame();
+        
+        const gameData = {
+            player1: getPlayerName(),
+            player2: null,
+            gameState: getGameState(),
+            currentPlayer: 1, // Начинает первый игрок
+            status: 'waiting',
+            createdAt: Date.now()
+        };
+        
+        await set(ref(database, 'mazeGames/' + gameId), gameData);
+        
+        gameIdDisplay.textContent = `ID игры: ${gameId}`;
+        gameIdDisplay.style.display = 'block';
+        waitingMessage.style.display = 'block';
+        errorMessage.textContent = '';
+        
+        setupGameListener();
+        
+    } catch (error) {
+        console.error('Ошибка создания игры:', error);
+        errorMessage.textContent = 'Ошибка создания игры.';
+    }
+});
+		
+// Присоединение к игре
+joinGameBtn.addEventListener('click', async () => {
+    const joinGameId = gameIdInput.value.trim();
+    if (!joinGameId) {
+        errorMessage.textContent = 'Введите ID игры';
+        return;
+    }
+    
+    try {
+        const snapshot = await get(ref(database, 'mazeGames/' + joinGameId));
+        
+        if (snapshot.exists()) {
+            const gameData = snapshot.val();
+            if (gameData.status === 'waiting') {
+                gameId = joinGameId;
+                playerNumber = 2;
+                gameActive = true;
+                
+                // Сначала инициализируем canvas и базовые переменные
+                const dimensions = initCanvas();
+                grid = dimensions.grid;
+                w = dimensions.w;
+                h = dimensions.h;
+                
+                // Инициализируем базовые переменные
+                x1 = 0;
+                y1 = 0;
+                x2 = canvas.width - grid;
+                y2 = canvas.height - grid;
+                sten = { x: 0, y: 0 };
+                
+                // Затем применяем состояние из игры
+                applyGameState(gameData.gameState);
+                
+                const updates = {
+                    player2: getPlayerName(),
+                    status: 'active',
+                    currentPlayer: gameData.currentPlayer || 1 // Сохраняем текущего игрока
+                };
+                
+                await update(ref(database, 'mazeGames/' + gameId), updates);
+                
+                gameIdDisplay.textContent = `ID игры: ${gameId}`;
+                gameIdDisplay.style.display = 'block';
+                waitingMessage.style.display = 'none';
+                errorMessage.textContent = '';
+                
+                // Показываем игровое поле сразу
+                showGameScreen();
+                
+                setupGameListener();
+            } else {
+                errorMessage.textContent = 'Игра уже началась или завершена';
+            }
+        } else {
+            errorMessage.textContent = 'Игра не найдена';
+        }
+    } catch (error) {
+        console.error('Ошибка присоединения к игре:', error);
+        errorMessage.textContent = 'Ошибка присоединения к игре.';
+    }
+});
+		
+	// Слушатель изменений игры
+function setupGameListener() {
+    gameRef = ref(database, 'mazeGames/' + gameId);
+    onValue(gameRef, (snapshot) => {
+        // ДОБАВЛЕНО: Игнорируем обновления если игра завершена
+        if (gameFinished) return;
+        
+        if (isMakingMove) {
+            setTimeout(() => {
+                isMakingMove = false;
+            }, 500);
+            return;
+        }
+        
+        const gameData = snapshot.val();
+        if (gameData) {
+            updateGameState(gameData);
+            
+            // Если игра активна и canvas скрыт, показываем его
+            if (gameData.status === 'active' && canvas.classList.contains('hidden')) {
+                showGameScreen();
+            }
+        }
+    });
+}
+		
+// Обновление состояния из Firebase
+function updateGameState(gameData) {
+    try {
+        // ДОБАВЛЕНО: Игнорируем обновления если игра завершена
+        if (gameFinished) return;
+        
+        if (gameData.gameState) {
+            applyGameState(gameData.gameState);
+        }
+        
+        if (gameData.status === 'waiting') {
+            waitingMessage.style.display = 'block';
+        } else {
+            waitingMessage.style.display = 'none';
+        }
+        
+        // Обработка завершенной игры (победы)
+        if (gameData.status === 'finished' && gameData.winner) {
+            gameActive = false;
+            gameFinished = true; // ДОБАВЛЕНО: Устанавливаем флаг завершения
+            
+            // Показываем победителя обоим игрокам
+            setTimeout(() => {
+                showWinner(gameData.winner);
+            }, 500);
+        }
+        
+        // Обновляем currentPlayer для онлайн режима
+        if (gameMode === 'online' && gameData.currentPlayer) {
+            // Не блокируем управление, просто показываем чей ход
+        }
+        
+        // Всегда обновляем отрисовку
+        renderBoard();
+        
+    } catch (error) {
+        console.error('Ошибка обновления состояния:', error);
+    }
+}
+		
+		// Получение текущего состояния игры для сохранения
+		function getGameState() {
+			return {
+				snake: { ...snake },
+				win: { ...win },
+				win1: { ...win1 },
+				next: { ...next },
+				q1, q2, q,
+				k, r, d,
+				w1, w2,
+				c, g,
+				x1, y1, x2, y2,
+				a: JSON.parse(JSON.stringify(a)),
+				b: JSON.parse(JSON.stringify(b))
+			};
+		}
+		
+		// Применение состояния игры из сохранения
+// Применение состояния игры из сохранения
+function applyGameState(gameState) {
+ 
+    
+    // Безопасное применение состояния с проверками
+    if (gameState.snake) {
+        snake = { 
+            x: gameState.snake.x || grid,
+            y: gameState.snake.y || grid,
+            dx: gameState.snake.dx || 0,
+            dy: gameState.snake.dy || 0
+        };
+    }
+    
+    if (gameState.win) {
+        win = { 
+            x: gameState.win.x || getRandomInt(0, w) * grid,
+            y: gameState.win.y || getRandomInt(0, h) * grid
+        };
+        // Проверяем, что выход проходим
+        if (!isCellPassable(win.x, win.y, w1)) {
+            win = findRandomPassableCell(w1);
+        }
+    }
+    
+    if (gameState.win1) {
+        win1 = { 
+            x: gameState.win1.x || getRandomInt(0, w) * grid,
+            y: gameState.win1.y || getRandomInt(0, h) * grid
+        };
+        // Проверяем, что выход проходим
+        if (!isCellPassable(win1.x, win1.y, w2)) {
+            win1 = findRandomPassableCell(w2);
+        }
+    }
+    
+// В функции applyGameState убедитесь, что этажи применяются правильно:
+if (gameState.next) {
+    next = { 
+        x: gameState.next.x || getRandomInt(1, w-1) * grid,
+        y: gameState.next.y || getRandomInt(1, h-1) * grid
+    };
+    if (!isCellPassableOnBothFloors(next.x, next.y)) {
+        next = findRandomPassableCellOnBothFloors();
+    }
+}
+
+// Убедитесь, что этажи применяются в правильном порядке
+q1 = gameState.q1 !== undefined ? gameState.q1 : 1;
+q2 = gameState.q2 !== undefined ? gameState.q2 : 1;
+q = gameState.q !== undefined ? gameState.q : (playerNumber === 1 ? q1 : q2);
+    
+    k = gameState.k !== undefined ? gameState.k : 1;
+    r = gameState.r !== undefined ? gameState.r : getRandomInt(2, 13);
+    d = gameState.d !== undefined ? gameState.d : getRandomInt(10, 1000);
+    w1 = gameState.w1 !== undefined ? gameState.w1 : getRandomInt(1, 3);
+    w2 = gameState.w2 !== undefined ? gameState.w2 : getRandomInt(1, 3);
+    c = gameState.c !== undefined ? gameState.c : 99;
+    g = gameState.g !== undefined ? gameState.g : getRandomInt(1, 7);
+    x1 = gameState.x1 !== undefined ? gameState.x1 : 0;
+    y1 = gameState.y1 !== undefined ? gameState.y1 : 0;
+    x2 = gameState.x2 !== undefined ? gameState.x2 : (canvas.width - grid);
+    y2 = gameState.y2 !== undefined ? gameState.y2 : (canvas.height - grid);
+    
+    // Важно: матрицы a и b должны быть правильно инициализированы
+    if (gameState.a && Array.isArray(gameState.a) && gameState.a.length === w) {
+        a = JSON.parse(JSON.stringify(gameState.a));
+    } else {
+        console.warn('Матрица a не загружена правильно, создаем заново');
+        // Создаем базовую матрицу
+        a = [];
+        for (let i = 0; i < w; i++) {
+            a[i] = [];
+            for (let j = 0; j < h; j++) {
+                a[i][j] = 1; // По умолчанию все клетки проходимы
+            }
+        }
+    }
+    
+    if (gameState.b && Array.isArray(gameState.b) && gameState.b.length === w) {
+        b = JSON.parse(JSON.stringify(gameState.b));
+    } else {
+        console.warn('Матрица b не загружена правильно, создаем заново');
+        // Создаем базовую матрицу
+        b = [];
+        for (let i = 0; i < w; i++) {
+            b[i] = [];
+            for (let j = 0; j < h; j++) {
+                b[i][j] = 1; // По умолчанию все клетки проходимы
+            }
+        }
+    }
+    
+
+    
+    // Обновляем отрисовку сразу после применения состояния
+    renderBoard();
+}
+		// Сохранение состояния в Firebase
+// Сохранение состояния в Firebase
+async function saveGameState() {
+    if (!gameRef) return;
+    
+    isMakingMove = true;
+    
+    const updates = {
+        gameState: getGameState(),
+        currentPlayer: k // Сохраняем текущего игрока
+    };
+    
+    try {
+        await update(gameRef, updates);
+
+    } catch (error) {
+        console.error('Ошибка сохранения игры:', error);
+    }
+}
+		
+// Сброс игры
+function resetGame() {
+    if (gameRef && gameMode === 'online') {
+        remove(gameRef);
+    }
+    
+    gameId = null;
+    playerNumber = null;
+    gameRef = null;
+    gameMode = null;
+    isMakingMove = false;
+    gameActive = true;
+    isTurnChanging = false;
+    gameFinished = false; // ДОБАВЛЕНО: Сбрасываем флаг завершения
+
+    gameIdDisplay.style.display = 'none';
+    waitingMessage.style.display = 'none';
+    errorMessage.textContent = '';
+    
+    showModeSelection();
+}
+		
+		// Инициализация игры
+		function initGame() {
+			// Сброс состояния игры
+			if (playerNumber === 1) {
+				snake.dx = x1;
+				snake.dy = y1;
+			} else {
+				snake.dx = x2;
+				snake.dy = y2;
+			}
+			k = playerNumber;
+			q = (playerNumber === 1) ? q1 : q2;
+			r = getRandomInt(2, 13);
+			c = 99;
+			g = 0
+			
+                gameFinished = false;
+    gameActive = true;
+			renderBoard();
+		}
+		function showWinner(winner) {
+    if (document.querySelector('.winner-overlay')) {
+        return;
+    }
+
+			const overlay = document.createElement('div');
+			overlay.style.position = 'fixed';
+			overlay.style.top = '0';
+			overlay.style.left = '0';
+			overlay.style.width = '100%';
+			overlay.style.height = '100%';
+			overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+			overlay.style.display = 'flex';
+			overlay.style.justifyContent = 'center';
+			overlay.style.alignItems = 'center';
+			overlay.style.zIndex = '1000';
+			overlay.style.flexDirection = 'column';
+			overlay.style.gap = '30px';
+			
+    const winnerPiece = document.createElement('div');
+    winnerPiece.style.width = '120px';
+    winnerPiece.style.height = '120px';
+    winnerPiece.style.borderRadius = '0px'; // Скругленные углы вместо круга
+    winnerPiece.style.position = 'relative';
+    winnerPiece.style.display = 'flex';
+    winnerPiece.style.justifyContent = 'center';
+    winnerPiece.style.alignItems = 'center';
+    winnerPiece.style.boxShadow = '0 0 30px rgba(255, 255, 255, 0.5)';
+    winnerPiece.style.animation = 'winnerGlow 1.5s infinite alternate';
+			
+			// Применяем стили в зависимости от победителя
+    if (winner === 1) {
+		        winnerPiece.style.background = 'linear-gradient(135deg, #668aff, #00aeff)';
+        winnerPiece.style.border = '3px solid #7536f5';
+
+        
+        // Добавляем корону  для победителя 1
+       // if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+      winnerPiece.innerHTML = `
+            <div style="
+                position: absolute;
+                top: -30px;
+                left: 50%;
+                transform: translateX(-50%);
+                font-size: 3em;
+                color: gold;
+                text-shadow: 0 2px 10px rgba(255, 215, 0, 0.8);
+                z-index: 1001;
+            ">♛</div>
+        `;
+    } else {
+        winnerPiece.style.background = 'linear-gradient(135deg, #FF66FF, #CC66FF)';
+        winnerPiece.style.border = '3px solid #CC00CC';
+        
+        // Добавляем корону  для победителя 2
+        winnerPiece.innerHTML = `
+            <div style="
+                position: absolute;
+                top: -30px;
+                left: 50%;
+                transform: translateX(-50%);
+                font-size: 3em;
+                color: gold;
+                text-shadow: 0 2px 10px rgba(255, 215, 0, 0.8);
+                z-index: 1001;
+            ">♛</div>
+        `;
+    }
+			
+			const winnerText = document.createElement('div');
+			winnerText.style.fontSize = '2.5em';
+			winnerText.style.color = 'white';
+			winnerText.style.textAlign = 'center';
+
+			
+			const newGameBtn = document.createElement('button');
+			newGameBtn.textContent = 'Новая игра';
+			newGameBtn.className = 'btn';
+			newGameBtn.addEventListener('click', () => {
+				document.body.removeChild(overlay);
+				if (gameMode === 'online') {
+					resetGame();
+				} else {
+					resetGame();
+				}
+			});
+			
+			overlay.appendChild(winnerPiece);
+			overlay.appendChild(winnerText);
+			overlay.appendChild(newGameBtn);
+			document.body.appendChild(overlay);
+		}
+// Проверка победы
+async function checkWin() {
+    // ДОБАВЛЕНО: Если игра уже завершена, не проверяем снова
+    if (gameFinished || !gameActive) return true;
+    
+    const playerWon = 
+        (k == 1 && Math.floor(snake.x/grid) === Math.floor(win.x/grid) && Math.floor(snake.y/grid) === Math.floor(win.y/grid) && q == w1) ||
+        (k == 2 && Math.floor(snake.x/grid) === Math.floor(win1.x/grid) && Math.floor(snake.y/grid) === Math.floor(win1.y/grid) && q == w2);
+    
+    if (playerWon) {
+        gameActive = false;
+        gameFinished = true; // ДОБАВЛЕНО: Устанавливаем флаг завершения
+        
+        // Сохраняем состояние победы в Firebase
+        if (gameMode === 'online' && gameRef) {
+            const updates = {
+                gameState: getGameState(),
+                status: 'finished',
+                winner: k,
+                finishedAt: Date.now()
+            };
+            
+            try {
+                await update(gameRef, updates);
+            } catch (error) {
+                console.error('Ошибка сохранения победы:', error);
+            }
+        }
+        
+        // Показываем победителя локально
+        setTimeout(() => {
+            showWinner(k);
+        }, 500);
+        return true;
+    }
+    return false;
+}
+	
+// Функция для проверки, что клетка проходима на указанном этаже
+function isCellPassable(x, y, floor) {
+    const gridX = Math.floor(x / grid);
+    const gridY = Math.floor(y / grid);
+    
+    // Проверяем границы массива
+    if (gridX < 0 || gridX >= w || gridY < 0 || gridY >= h) {
+        return false;
+    }
+    
+    if (floor === 1) {
+        return a[gridX] && a[gridX][gridY] === 1;
+    } else {
+        return b[gridX] && b[gridX][gridY] === 1;
+    }
+}
+
+// Функция для проверки, что клетка проходима на обоих этажах
+function isCellPassableOnBothFloors(x, y) {
+    const gridX = Math.floor(x / grid);
+    const gridY = Math.floor(y / grid);
+    
+    // Клетка проходима только если на ОБОИХ этажах значение 1
+    return a[gridX] && a[gridX][gridY] === 1 && 
+           b[gridX] && b[gridX][gridY] === 1;
+}
+
+// Функция для поиска случайной проходимой клетки
+function findRandomPassableCell(floor, maxAttempts = 100) {
+    let attempts = 0;
+    
+    // Сначала создаем временные матрицы, если основные еще не созданы
+    let tempMatrix;
+    if (floor === 1) {
+        tempMatrix = a && a.length > 0 ? a : createTempMatrix();
+    } else {
+        tempMatrix = b && b.length > 0 ? b : createTempMatrix();
+    }
+    
+    while (attempts < maxAttempts) {
+        const gridX = getRandomInt(0, w);
+        const gridY = getRandomInt(0, h);
+        
+        // Проверяем границы
+        if (gridX >= 0 && gridX < w && gridY >= 0 && gridY < h) {
+            // Проверяем, что клетка проходима на указанном этаже
+            if (tempMatrix[gridX] && tempMatrix[gridX][gridY] === 1) {
+                return { x: gridX * grid, y: gridY * grid };
+            }
+        }
+        
+        attempts++;
+    }
+    
+    // Если не нашли за maxAttempts, возвращаем гарантированно проходимую клетку
+    return { x: 0, y: 0 };
+}
+
+// Вспомогательная функция для создания временной матрицы
+function createTempMatrix() {
+    const matrix = [];
+    for (let i = 0; i < w; i++) {
+        matrix[i] = [];
+        for (let j = 0; j < h; j++) {
+            // По умолчанию все клетки проходимы
+            matrix[i][j] = 1;
+        }
+    }
+    return matrix;
+}
+
+
+// Функция для поиска случайной проходимой клетки на обоих этажах
+function findRandomPassableCellOnBothFloors(maxAttempts = 100) {
+    let attempts = 0;
+    
+    while (attempts < maxAttempts) {
+        const gridX = getRandomInt(1, w-1);
+        const gridY = getRandomInt(1, h-1);
+        
+        // Проверяем, что индексы в пределах массивов и клетка проходима на обоих этажах
+        if (a && a[gridX] !== undefined && a[gridX][gridY] !== undefined &&
+            b && b[gridX] !== undefined && b[gridX][gridY] !== undefined &&
+            a[gridX][gridY] === 1 && 
+            b[gridX][gridY] === 1) {
+            return { x: gridX * grid, y: gridY * grid };
+        }
+        
+        attempts++;
+    }
+    
+    // Если не нашли за maxAttempts, ищем любую подходящую клетку перебором
+    for (let i = 1; i < w-1; i++) {
+        for (let j = 1; j < h-1; j++) {
+            if (a[i] && a[i][j] === 1 && 
+                b[i] && b[i][j] === 1) {
+                return { x: i * grid, y: j * grid };
+            }
+        }
+    }
+    
+    // Если вообще не нашли подходящей клетки, создаем гарантированно проходимую
+    const safeX = Math.max(1, Math.floor(w/2));
+    const safeY = Math.max(1, Math.floor(h/2));
+    return { x: safeX * grid, y: safeY * grid };
+}
+
+// Инициализация выходов с проверкой на проходимость
+win = findRandomPassableCell(w1);
+win1 = findRandomPassableCell(w2);
+
+// Инициализация лестницы с проверкой на проходимость на обоих этажах
+next = findRandomPassableCellOnBothFloors();
+
+// Дополнительная проверка, чтобы лестница не спавнилась на выходах
+let attempts = 0;
+const maxAttempts = 50;
+while (attempts < maxAttempts && 
+       ((Math.floor(next.x/grid) === Math.floor(win.x/grid) && Math.floor(next.y/grid) === Math.floor(win.y/grid)) ||
+        (Math.floor(next.x/grid) === Math.floor(win1.x/grid) && Math.floor(next.y/grid) === Math.floor(win1.y/grid)))) {
+    next = findRandomPassableCellOnBothFloors();
+    attempts++;
+}
+		
+// Обработка взаимодействия с лестницей
+function handleStairInteraction() {
+    if (Math.floor(snake.x/grid) === Math.floor(next.x/grid) && Math.floor(snake.y/grid) === Math.floor(next.y/grid)) {
+        // ТОЛЬКО текущий игрок меняет этаж СРАЗУ
+        if (k == 1) {
+            q1 = (q1 == 1) ? 2 : 1;
+            q = q1; // Текущий игрок переходит на другой этаж
+        } else {
+            q2 = (q2 == 1) ? 2 : 1;
+            q = q2; // Текущий игрок переходит на другой этаж
+        }
+        
+   
+        
+        // Генерируем новую лестницу с проверкой на оба этажа
+        next = findRandomPassableCellOnBothFloors();
+        
+        // Дополнительная проверка, чтобы лестница не спавнилась на выходах
+        let attempts = 0;
+        const maxAttempts = 50;
+        while (attempts < maxAttempts && 
+               ((Math.floor(next.x/grid) === Math.floor(win.x/grid) && Math.floor(next.y/grid) === Math.floor(win.y/grid)) ||
+                (Math.floor(next.x/grid) === Math.floor(win1.x/grid) && Math.floor(next.y/grid) === Math.floor(win1.y/grid)))) {
+            next = findRandomPassableCellOnBothFloors();
+            attempts++;
+        }
+        
+        // СРАЗУ ОБНОВЛЯЕМ ВИЗУАЛ - это самое важное изменение!
+        renderBoard();
+        
+        // Сохраняем состояние в онлайн режиме
+        if (gameMode === 'online') {
+            saveGameState();
+        }
+        
+        return true;
+    }
+    return false;
+}
+		
+// Обработка смены хода
+function handleTurnChange() {
+    if (isTurnChanging) return;
+    
+    isTurnChanging = true;
+    gameActive = false; // Блокируем управление на время задержки
+    
+    // Показываем сообщение о смене хода
+    renderBoard();
+    
+    // Ждем 1 секунду
+    setTimeout(() => {
+        // Сохраняем позицию текущего игрока и переключаем на другого
+        if (k == 1) {
+            x1 = snake.dx;
+            y1 = snake.dy;
+            snake.dx = x2;
+            snake.dy = y2;
+            q = q2;
+        } else {
+            x2 = snake.dx;
+            y2 = snake.dy;
+            snake.dx = x1;
+            snake.dy = y1;
+            q = q1;
+        }
+        
+        // Обновляем позицию змейки
+        snake.x = snake.dx;
+        snake.y = snake.dy;
+        
+        // Генерируем новое количество ходов для следующего игрока
+        k = (k == 1) ? 2 : 1;
+        r = getRandomInt(2, 13);
+        
+        // Разблокируем управление
+        gameActive = true;
+        isTurnChanging = false;
+        
+        // Сохраняем состояние в онлайн режиме
+        if (gameMode === 'online') {
+            saveGameState();
+        }
+        
+        // Обновляем отрисовку
+        renderBoard();
+    }, 1000);
+    
+    return true;
+}
+		
+		// Проверка видимости лестницы (в радиусе 3 клеток)
+		function isStairVisible() {
+			const distanceX = Math.abs(snake.x - next.x) / grid;
+			const distanceY = Math.abs(snake.y - next.y) / grid;
+			return distanceX <= 3 && distanceY <= 3;
+		}
+		
+//вывод на табло
+function showScore(){
+    context.fillStyle = 'white';
+    context.font = grid + 'px Courier New';
+
+    context.fillText('Room: ' + q, canvas.width - grid * 9, grid * 1);
+    context.fillText('Moves: ' + r, canvas.width - grid * 9, grid * 2);
+
+    // Показываем чей ход в онлайн режиме
+    if (gameMode === 'online') {
+        if (playerNumber === k) {
+            context.fillText('Ваш ход!', canvas.width - grid * 9, grid * 3);
+        } else {
+            context.fillText('Ход соперника', canvas.width - grid * 9, grid * 3);
+        }
+        
+        // Показываем бонус для всех в онлайн-режиме
+        if (c == 0){
+            context.fillText('Bonus: ' + '+' + g, canvas.width - grid * 9, grid * 4);
+        } else if (c == 1) {
+            context.fillText('Bonus: visible', canvas.width - grid * 9, grid * 4);
+        }
+    } else {
+        // Локальный режим
+        if (c == 0){
+            context.fillText('Bonus: ' + '+' + g, canvas.width - grid * 9, grid * 4);
+        } else if (c == 1) {
+            context.fillText('Bonus: visible', canvas.width - grid * 9, grid * 4);
+        }
+    }
+}
+
+		function renderBoard() {
+			if (!gameActive) return;
+			
+			context.clearRect(0, 0, canvas.width, canvas.height);
+
+			// Безопасное обновление позиции змейки
+			if (snake && snake.dx !== undefined && snake.dy !== undefined) {
+				snake.x = snake.dx;
+				snake.y = snake.dy;
+			} else {
+				// Если snake не инициализирован, инициализируем его
+				snake = { x: grid, y: grid, dx: 0, dy: 0 };
+			}
+			
+			// Безопасное получение координат
+			let i = 0, j = 0;
+			if (snake.x !== undefined && snake.y !== undefined) {
+				i = Math.floor(snake.x/grid);
+				j = Math.floor(snake.y/grid);
+			}
+
+			// Проверяем границы массивов
+			if (i < 0) i = 0;
+			if (i >= w) i = w - 1;
+			if (j < 0) j = 0;
+			if (j >= h) j = h - 1;
+
+			// отрисовка выхода и стен
+			if (win && win.x !== undefined && k == 1 && q == w1 && (win.x - snake.x <= 1 * grid) && (win.x - snake.x >= -1 * grid) && (win.y - snake.y <= 1 * grid) && (win.y - snake.y >= -1 * grid)){ 
+				context.fillStyle = 'white';
+				context.fillRect(win.x, win.y, grid , grid );
+			} else if (win1 && win1.x !== undefined && k == 2 && q == w2 && (win1.x - snake.x <= 1 * grid) && (win1.x - snake.x >= -1 * grid) && (win1.y - snake.y <= 1 * grid) && (win1.y - snake.y >= -1 * grid) ) {
+				context.fillStyle = 'white';
+				context.fillRect(win1.x, win1.y, grid , grid );
+			}
+			
+			if (k == 1 && c == 1 && q == w1 && win){
+				context.fillStyle = 'white';
+				context.fillRect(win.x, win.y, grid , grid );
+			} else if (k == 2 && c == 1 && q == w2 && win1){
+				context.fillStyle = 'white';
+				context.fillRect(win1.x, win1.y, grid , grid );
+			}
+			
+			// Показываем лестницу только в радиусе 3 клеток
+			if (next && next.x !== undefined && isStairVisible()) {
+				context.fillStyle = 'yellow';
+				context.fillRect(next.x, next.y, grid , grid );
+			}
+
+context.fillStyle = 'red';
+
+// Стены первого этажа (отображаются только когда игрок на первом этаже)
+if (q === 1) {
+    if (a && a[i] !== undefined && a[i][j-1] !== undefined && snake.y > 0 && a[i][j - 1] !== 1){
+        sten.x = snake.x;
+        sten.y = snake.y - grid / 10;
+        context.fillRect(sten.x, sten.y, grid , grid / 10);
+    }
+    if (a && a[i] !== undefined && a[i][j+1] !== undefined && snake.y < canvas.height - grid && a[i][j + 1] !== 1){
+        sten.x = snake.x;
+        sten.y = snake.y + grid;
+        context.fillRect(sten.x, sten.y, grid , grid / 10);
+    }
+    if (a && a[i-1] !== undefined && a[i-1][j] !== undefined && snake.x > 0 && a[i - 1][j] !== 1){
+        sten.x = snake.x - grid / 10;
+        sten.y = snake.y;
+        context.fillRect(sten.x, sten.y, grid / 10, grid);
+    }
+    if (a && a[i+1] !== undefined && a[i+1][j] !== undefined && snake.x < canvas.width - grid && a[i + 1][j] !== 1){
+        sten.x = snake.x + grid;
+        sten.y = snake.y;
+        context.fillRect(sten.x, sten.y, grid / 10, grid);
+    }
+}
+
+// Стены второго этажа (отображаются только когда игрок на втором этаже)
+if (q === 2) {
+    if (b && b[i] !== undefined && b[i][j-1] !== undefined && snake.y > 0 && b[i][j - 1] !== 1){
+        sten.x = snake.x;
+        sten.y = snake.y - grid / 10;
+        context.fillRect(sten.x, sten.y, grid , grid / 10);
+    }
+    if (b && b[i] !== undefined && b[i][j+1] !== undefined && snake.y < canvas.height - grid && b[i][j + 1] !== 1){
+        sten.x = snake.x;
+        sten.y = snake.y + grid;
+        context.fillRect(sten.x, sten.y, grid , grid / 10);
+    }
+    if (b && b[i-1] !== undefined && b[i-1][j] !== undefined && snake.x > 0 && b[i - 1][j] !== 1){
+        sten.x = snake.x - grid / 10;
+        sten.y = snake.y;
+        context.fillRect(sten.x, sten.y, grid / 10, grid);
+    }
+    if (b && b[i+1] !== undefined && b[i+1][j] !== undefined && snake.x < canvas.width - grid && b[i + 1][j] !== 1){
+        sten.x = snake.x + grid;
+        sten.y = snake.y;
+        context.fillRect(sten.x, sten.y, grid / 10, grid);
+    }
+}
+
+			// проверка на смену цвета
+			if (k == 1){
+				context.fillStyle = '#00aeff';
+			} else {
+				context.fillStyle = '#CC66FF';
+			}
+
+			context.fillRect(snake.x, snake.y, grid , grid );
+			
+			showScore();
+		}
+
+document.addEventListener('keydown', async (e) => {
+    if (!gameActive || isTurnChanging) return;
+    if (!gameActive) return;
+    if (gameMode === 'online' && playerNumber !== k) {
+        return; // Не позволяем ходить не в свой ход
+    }
+    
+    // Проверяем, что snake инициализирован
+    if (!snake || snake.dx === undefined || snake.dy === undefined) {
+        console.error('Snake не инициализирован');
+        return;
+    }
+    
+    // Если ходов не осталось, просто передаем ход
+if (r <= 0) {
+   
+    // Сначала сохраняем состояние текущего хода
+    if (gameMode === 'online') {
+        await saveGameState();
+    }
+   
+    // Потом запускаем смену хода
+    setTimeout(() => {
+        handleTurnChange();
+    }, 100);
+}
+    
+    let moved = false;
+    let newX = snake.dx;
+    let newY = snake.dy;
+    
+    let i = Math.floor(snake.dx/grid);
+    let j = Math.floor(snake.dy/grid);
+    
+    // Проверяем границы
+    if (i < 0) i = 0;
+    if (i >= w) i = w - 1;
+    if (j < 0) j = 0;
+    if (j >= h) j = h - 1;
+    
+    switch (e.key) {
+        case 'ArrowLeft':
+            if (snake.dx > 0) {
+                // Проверяем стену только на текущем этаже
+                if ((q === 1 && a[i - 1][j] === 1) || (q === 2 && b[i - 1][j] === 1)) {
+                    newX = snake.dx - grid;
+                    moved = true;
+                }
+            }
+            break;
+        case 'ArrowRight':
+            if (snake.dx < canvas.width - grid) {
+                // Проверяем стену только на текущем этаже
+                if ((q === 1 && a[i + 1][j] === 1) || (q === 2 && b[i + 1][j] === 1)) {
+                    newX = snake.dx + grid;
+                    moved = true;
+                }
+            }
+            break;
+        case 'ArrowUp':
+            if (snake.dy > 0) {
+                // Проверяем стену только на текущем этаже
+                if ((q === 1 && a[i][j - 1] === 1) || (q === 2 && b[i][j - 1] === 1)) {
+                    newY = snake.dy - grid;
+                    moved = true;
+                }
+            }
+            break;
+        case 'ArrowDown':
+            if (snake.dy < canvas.height - grid) {
+                // Проверяем стену только на текущем этаже
+                if ((q === 1 && a[i][j + 1] === 1) || (q === 2 && b[i][j + 1] === 1)) {
+                    newY = snake.dy + grid;
+                    moved = true;
+                }
+            }
+            break;
+    }
+    
+    if (moved) {
+        snake.dx = newX;
+        snake.dy = newY;
+        
+        // Уменьшаем количество ходов только если был реальный ход
+        r--;
+        c = getRandomInt(0, 100);
+g = getRandomInt(1, 7);
+           if (r==0){
+c = 99   
+
+           }
+        if (c == 0){
+
+            r+=g
+
+        }
+
+
+        // Обновляем позицию
+        snake.x = snake.dx;
+        snake.y = snake.dy;
+        
+        // Проверяем взаимодействие с лестницей
+        const changedFloor = handleStairInteraction();
+        
+        // Проверяем победу
+if (await checkWin()) {
+    renderBoard();
+    return;
+}
+        // Проверяем смену хода (если ходы закончились после этого хода)
+if (r <= 0) {
+   
+    // Сначала сохраняем состояние текущего хода
+    if (gameMode === 'online') {
+        await saveGameState();
+    }
+     
+    // Потом запускаем смену хода
+    setTimeout(() => {
+        handleTurnChange();
+    }, 100);
+}
+        // Обновляем отрисовку
+        if (!changedFloor) {
+            renderBoard();
+        }
+        
+        // Сохраняем состояние в онлайн режиме
+        if (gameMode === 'online') {
+            saveGameState();
+        }
+    }
+});
+		
+		// Вспомогательные функции
+		function generateGameId() {
+			return Math.random().toString(36).substring(2, 8).toUpperCase();
+		}
+		
+		function getPlayerName() {
+			return localStorage.getItem('login') || 'Анонимный игрок';
+		}
+
+// Переменные для обработки свайпов
+let touchStartX = null;
+let touchStartY = null;
+
+// Обработчик начала касания
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+}, { passive: false });
+
+// Обработчик движения касания
+canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+}, { passive: false });
+
+// Обработчик окончания касания (определяем свайп)
+canvas.addEventListener('touchend', async (e) => {
+	if (isTurnChanging) return;
+    e.preventDefault();
+    
+    if (!gameActive) return;
+    if (gameMode === 'online' && playerNumber !== k) {
+        return;
+    }
+    if (!touchStartX || !touchStartY) return;
+    
+    const touch = e.changedTouches[0];
+    const touchEndX = touch.clientX;
+    const touchEndY = touch.clientY;
+    
+    const diffX = touchEndX - touchStartX;
+    const diffY = touchEndY - touchStartY;
+    
+    // Минимальная дистанция для определения свайпа
+    const minSwipeDistance = 30;
+    
+    // Сбрасываем начальные координаты
+    touchStartX = null;
+    touchStartY = null;
+    
+    if (Math.abs(diffX) < minSwipeDistance && Math.abs(diffY) < minSwipeDistance) {
+        return; // Слишком короткий свайп
+    }
+    
+    // Определяем направление свайпа
+    let direction = '';
+    if (Math.abs(diffX) > Math.abs(diffY)) {
+        // Горизонтальный свайп
+        direction = diffX > 0 ? 'right' : 'left';
+    } else {
+        // Вертикальный свайп
+        direction = diffY > 0 ? 'down' : 'up';
+    }
+    
+    // Если ходов не осталось, просто передаем ход
+if (r <= 0) {
+  
+    // Сначала сохраняем состояние текущего хода
+    if (gameMode === 'online') {
+        await saveGameState();
+    }
+    
+    // Потом запускаем смену хода
+    setTimeout(() => {
+        handleTurnChange();
+    }, 100);
+}
+    
+    // Проверяем, что snake инициализирован
+    if (!snake || snake.dx === undefined || snake.dy === undefined) {
+        console.error('Snake не инициализирован');
+        return;
+    }
+    
+    let moved = false;
+    let newX = snake.dx;
+    let newY = snake.dy;
+    
+    let i = Math.floor(snake.dx/grid);
+    let j = Math.floor(snake.dy/grid);
+    
+    // Проверяем границы
+    if (i < 0) i = 0;
+    if (i >= w) i = w - 1;
+    if (j < 0) j = 0;
+    if (j >= h) j = h - 1;
+    
+    // Обрабатываем движение в зависимости от направления свайпа
+    switch (direction) {
+        case 'left':
+            if (snake.dx > 0) {
+                if ((q === 1 && a[i - 1][j] === 1) || (q === 2 && b[i - 1][j] === 1)) {
+                    newX = snake.dx - grid;
+                    moved = true;
+                }
+            }
+            break;
+        case 'right':
+            if (snake.dx < canvas.width - grid) {
+                if ((q === 1 && a[i + 1][j] === 1) || (q === 2 && b[i + 1][j] === 1)) {
+                    newX = snake.dx + grid;
+                    moved = true;
+                }
+            }
+            break;
+        case 'up':
+            if (snake.dy > 0) {
+                if ((q === 1 && a[i][j - 1] === 1) || (q === 2 && b[i][j - 1] === 1)) {
+                    newY = snake.dy - grid;
+                    moved = true;
+                }
+            }
+            break;
+        case 'down':
+            if (snake.dy < canvas.height - grid) {
+                if ((q === 1 && a[i][j + 1] === 1) || (q === 2 && b[i][j + 1] === 1)) {
+                    newY = snake.dy + grid;
+                    moved = true;
+                }
+            }
+            break;
+    }
+    
+    if (moved) {
+        snake.dx = newX;
+        snake.dy = newY;
+        
+        // Уменьшаем количество ходов только если был реальный ход
+        r--;
+     c = getRandomInt(0, 100);
+g = getRandomInt(1, 7);
+                 if (r==0){
+c = 99
+
+           }
+
+
+     if (c == 0){
+
+            r+=g
+            
+        }
+  
+
+        
+        // Обновляем позицию
+        snake.x = snake.dx;
+        snake.y = snake.dy;
+        
+        // Проверяем взаимодействие с лестницей
+        const changedFloor = handleStairInteraction();
+        
+        // Проверяем победу
+        if (await checkWin()) {
+            renderBoard();
+            return;
+        }
+        
+        // Проверяем смену хода (если ходы закончились после этого хода)
+if (r <= 0) {
+
+    // Сначала сохраняем состояние текущего хода
+    if (gameMode === 'online') {
+        await saveGameState();
+    }
+       
+    // Потом запускаем смену хода
+    setTimeout(() => {
+        handleTurnChange();
+    }, 100);
+}
+        
+        // Обновляем отрисовку
+        if (!changedFloor) {
+            renderBoard();
+        }
+        
+        // Сохраняем состояние в онлайн режиме
+        if (gameMode === 'online') {
+            saveGameState();
+        }
+    }
+}, { passive: false });
+
+
+
+		// Инициализация страницы
+		showModeSelection();
+			
+	</script>
+</body>
+</html>

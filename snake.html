@@ -1,0 +1,395 @@
+<html>
+     <head>
+	 <meta charset="Utf-8">
+ <link rel="icon" type="image/png" href="/favicon.png" sizes="32x32" />
+	<title>Змейка</title>
+    <script type="module">
+        // Импорт необходимых функций из Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, updateDoc, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        // Ваша конфигурация Firebase
+        const firebaseConfig = {
+        apiKey: "AIzaSyD90NTsd6knRycxFbpvyNWBPpD7XD5Ih70",
+        authDomain: "gaim-42aa5.firebaseapp.com",
+        databaseURL: "https://gaim-42aa5-default-rtdb.firebaseio.com",
+        projectId: "gaim-42aa5",
+        storageBucket: "gaim-42aa5.appspot.com",
+        messagingSenderId: "1036683439508",
+        appId: "1:1036683439508:web:b329b1257c9c89b3cef381",
+        measurementId: "G-5EE0W6HVJP"
+    };
+
+    // Инициализация Firebase
+    let app;
+    let auth;
+    let db;
+    var sac = 0
+    var sac1 = localStorage.s
+    if (typeof window !== 'undefined') {
+        app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        auth = getAuth(app);
+        db = getFirestore(app); // Инициализация Firestore
+    }
+
+    // Функция для получения uid пользователя
+    async function getUserUID() {
+        const login = localStorage.getItem('login'); // Получаем логин из localStorage
+
+        if (login) {
+            try {
+                const userCollectionRef = collection(db, 'user');
+                const q = query(userCollectionRef, where('login', '==', login)); // Запрос для поиска документа с указанным логином
+                const querySnapshot = await getDocs(q);
+                
+                if (!querySnapshot.empty) {
+                    let uid; // Объявляем переменную uid
+                    querySnapshot.forEach((doc) => {
+                        const userData = doc.data();
+                        uid = userData.uid; // Получаем uid пользователя
+                    });
+                    return uid; // Возвращаем uid
+                } 
+            } catch (error) {
+                console.error('Ошибка при получении UID:', error);
+            }
+        }
+        return null; // Возвращаем null, если логин не найден
+    }
+    async function getUserRecord(uid) {
+        const userRef = doc(db, 'user', uid);
+        const userDoc = await getDoc(userRef);
+        if (userDoc.exists()) {
+            return userDoc.data().s; // Возвращаем значение record
+        }
+        return null; // Если документ не найден
+    }
+    // Функция для обновления значения в Firestore
+    async function updateUserScore(uid, newScore) {
+    const userRef = doc(db, 'user', uid);
+ 
+    
+    try {
+        await updateDoc(userRef, {
+            s: newScore
+        });
+
+    } catch (error) {
+
+    }
+}
+
+    // Функция для проверки и обновления значения s
+    
+    async function checkAndUpdateScore() {
+        const newScore = parseInt(localStorage.getItem('s')) || 0; // Получаем новое значение из localStorage
+const uid = await getUserUID(); // Получаем uid
+
+if (uid) {
+    await updateUserScore(uid, newScore); // Правильный вызов функции обновления
+}
+
+    }
+    async function initializeScore() {
+        const uid = await getUserUID();
+        if (uid) {
+            sac = await getUserRecord(uid); // Получаем значение record из базы данных
+        }
+        
+    }
+    initializeScore() 
+ 
+   
+
+    function loop() {
+        
+        rAF = requestAnimationFrame(loop);
+        
+        if (sac < localStorage.s && sac1 !==localStorage.s){
+            sac1 = localStorage.s
+            checkAndUpdateScore(); 
+
+        }
+    }
+
+
+    rAF = requestAnimationFrame(loop);
+</script>
+   
+	<style>
+	html,
+	body {
+	height: 100%;
+	margin: 0;
+        overflow: hidden; /* Предотвращает скроллинг */
+    position: fixed; /* Фиксирует положение */
+     width: 100%;
+	}
+	body {
+	background: black;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+		cursor: none;
+		touch-action: none;
+	}
+	
+	</style>
+      </head>
+
+<body>
+
+
+
+<canvas  id='game'></canvas>
+
+
+
+
+
+
+
+
+
+<script>
+
+const canvas = document.getElementById('game');
+const context = canvas.getContext('2d');
+
+const isBot = confirm("Bot?");
+
+const grid = document.documentElement.clientWidth > document.documentElement.clientHeight ? 25 : 50;
+
+const w = Math.floor(document.documentElement.clientWidth / grid);
+const h = Math.floor(document.documentElement.clientHeight / grid);
+
+canvas.width = w * grid;
+canvas.height = h * grid;
+
+
+
+const snake = {
+    x: getRandomInt(0, w - 1) * grid,
+    y: getRandomInt(0, h - 1) * grid,
+    dx: grid,
+    dy: 0,
+    cells: [],
+    maxCells: 4
+};
+
+
+
+ 
+const apple = {
+    x: getRandomInt(0, w - 1) * grid,
+    y: getRandomInt(0, h - 1) * grid,
+};
+
+let rAF = null;
+let gameOver = false;
+
+let s = localStorage.s || 0;
+let score = 0;
+
+function getRandomInt(min, max) {
+    return Math.floor(Math.random() * (max - min)) + min;
+}
+
+function showScore() {
+    context.fillStyle = 'white';
+    context.font = `${grid * 2 / 3}px Courier New`;
+    context.fillText(`score: ${score}`, 0, grid);
+    context.fillText(`record: ${s}`, 0, grid * 2);
+    context.font = `${grid}px Courier New`;
+    context.fillStyle = 'black';
+    context.globalAlpha = 1;
+}
+
+function showGameOver() {
+    requestAnimationFrame(rAF);
+    gameOver = true;
+}
+
+
+
+    let lastTime = 0;
+const fixedTimeStep = 1000 / 10; // 10 обновлений в секунду (можно настроить)
+
+function loop(timestamp) {
+    rAF = requestAnimationFrame(loop);
+    
+    if (!lastTime) lastTime = timestamp;
+    const deltaTime = timestamp - lastTime;
+    
+    if (deltaTime < fixedTimeStep) {
+        return;
+    }
+    
+    lastTime = timestamp - (deltaTime % fixedTimeStep);
+ 
+
+    if (isBot) {
+        let shortestDistance = Infinity;
+        let bestDirection = null;
+        for (let i = 0; i < 4; i++) {
+            const dx = [0, 0, -grid, grid][i];
+            const dy = [-grid, grid, 0, 0][i];
+            const x = snake.x + dx;
+            const y = snake.y + dy;
+            const distance = Math.sqrt((x - apple.x) ** 2 + (y - apple.y) ** 2);
+            let collision = false;
+            for (let j = 0; j < snake.cells.length; j++) {
+                if (snake.cells[j].x === x && snake.cells[j].y === y) {
+                    collision = true;
+                    break;
+                }
+            }
+            if (!collision && distance < shortestDistance) {
+                shortestDistance = distance;
+                bestDirection = i;
+            }
+        }
+        if (bestDirection !== null) {
+            snake.dx = [0, 0, -grid, grid][bestDirection];
+            snake.dy = [-grid, grid, 0, 0][bestDirection];
+        }
+    }
+
+    if (snake.maxCells >= w * h) {
+        showGameOver()
+    }
+
+  
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    snake.x += snake.dx;
+    snake.y += snake.dy;
+
+    snake.x = (snake.x < 0) ? canvas.width - grid : (snake.x >= canvas.width) ? 0 : snake.x;
+    snake.y = (snake.y < 0) ? canvas.height - grid : (snake.y >= canvas.height) ? 0 : snake.y;
+
+    snake.cells.unshift({ x: snake.x, y: snake.y });
+    if (snake.cells.length > snake.maxCells) {
+        snake.cells.pop();
+    }
+    context.fillStyle = 'red';
+    context.fillRect(apple.x, apple.y, grid - 1, grid - 1);
+    context.fillStyle = 'green';
+    snake.cells.forEach((cell, index) => {
+        context.fillRect(cell.x, cell.y, grid - 1, grid - 1);
+
+        if (cell.x === apple.x && cell.y === apple.y) {
+            snake.maxCells++;
+            score++;
+            if (!isBot){
+            s = Math.max(s, score);
+            localStorage.s = s;
+            }
+            apple.x = getRandomInt(0, w - 1) * grid;
+            apple.y = getRandomInt(0, h - 1) * grid;
+        }
+
+        for (let i = index + 1; i < snake.cells.length; i++) {
+            if (cell.x === snake.cells[i].x && cell.y === snake.cells[i].y) {
+                snake.x = getRandomInt(0, w - 1) * grid;
+                snake.y = getRandomInt(0, h - 1) * grid;
+                snake.cells = [];
+                snake.maxCells = 4;
+                score = 0;
+                snake.dx = grid;
+                snake.dy = 0;
+                apple.x = getRandomInt(0, w - 1) * grid;
+                apple.y = getRandomInt(0, h - 1) * grid;
+            }
+        }
+    });
+
+    showScore();
+}
+
+if (!isBot) {
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+        document.addEventListener('touchstart', handleTouchStart, false);
+        document.addEventListener('touchmove', handleTouchMove, false);
+        let xDown = null;
+        let yDown = null;
+
+        function handleTouchStart(evt) {
+            xDown = evt.touches[0].clientX;
+            yDown = evt.touches[0].clientY;
+        }
+
+        function handleTouchMove(evt) {
+            if (!xDown || !yDown) {
+                return;
+            }
+            const xUp = evt.touches[0].clientX;
+            const yUp = evt.touches[0].clientY;
+
+            const xDiff = xDown - xUp;
+            const yDiff = yDown - yUp;
+
+            if (Math.abs(xDiff) > Math.abs(yDiff)) {
+                if (xDiff > 0) {
+                    if (snake.dx === 0) {
+                        snake.dx = -grid;
+                        snake.dy = 0;
+                    }
+                } else {
+                    if (snake.dx === 0) {
+                        snake.dx = grid;
+                        snake.dy = 0;
+                    }
+                }
+            } else {
+                if (yDiff > 0) {
+                    if (snake.dy === 0) {
+                        snake.dy = -grid;
+                        snake.dx = 0;
+                    }
+                } else {
+                    if (snake.dy === 0) {
+                        snake.dy = grid;
+                        snake.dx = 0;
+                    }
+                }
+            }
+
+            xDown = null;
+            yDown = null;
+        }
+    }
+}
+
+document.addEventListener('keydown', function (e) {
+    if (gameOver) return;
+
+    if (!isBot) {
+        if (e.which === 37 && snake.dx === 0) {
+            snake.dx = -grid;
+            snake.dy = 0;
+        }
+
+        if (e.which === 38 && snake.dy === 0) {
+            snake.dy = -grid;
+            snake.dx = 0;
+        }
+
+        if (e.which === 39 && snake.dx === 0) {
+            snake.dx = grid;
+            snake.dy = 0;
+        }
+
+        if (e.which === 40 && snake.dy === 0) {
+            snake.dy = grid;
+            snake.dx = 0;
+        }
+    }
+});
+
+rAF = requestAnimationFrame(loop);
+</script>
+</body>
+
+</html>

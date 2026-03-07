@@ -1,0 +1,262 @@
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="icon" type="image/png" href="/favicon.png" sizes="32x32" />
+<title>Пятнашки</title>
+<style>
+html, body {
+  height: 100%;
+  margin: 0;
+  
+}
+body {
+  background: black;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+canvas {
+  border: 1px solid white;
+}
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<script>
+var canvas = document.getElementById('game');
+var context = canvas.getContext('2d');
+
+var grid = 150;
+
+function getRandomInt(min, max) {
+  return Math.floor(Math.random() * (max - min)) + min;
+}
+
+// Функция для подсчета инверсий
+function countInversions(arr) {
+  var inv = 0;
+  for (var i = 0; i < arr.length; i++) {
+    for (var j = i + 1; j < arr.length; j++) {
+      if (arr[i] && arr[j] && arr[i] > arr[j]) {
+        inv++;
+      }
+    }
+  }
+  return inv;
+}
+
+// Функция проверки разрешимости
+function isSolvable(board, width, height) {
+  var linear = [];
+  var blankRow;
+  for (var i = 1; i <= height; i++) {
+    for (var j = 1; j <= width; j++) {
+      if (board[i][j] === 0) {
+        blankRow = i;
+      } else {
+        linear.push(board[i][j]);
+      }
+    }
+  }
+  var inv = countInversions(linear);
+  if (width % 2 === 1) {
+    return inv % 2 === 0;
+  } else {
+    return (inv + blankRow) % 2 === 1;
+  }
+}
+
+// Перемешивание массива
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
+
+// Создание решаемой начальной позиции
+function createSolvableInitial(width, height) {
+  var arr = [];
+  for (let i = 0; i < height + 2; i++) {
+    let row = [];
+    for (let j = 0; j < width + 2; j++) {
+      if (i === 0 || j === 0 || i === height + 1 || j === width + 1) {
+        row.push(-1);
+      } else {
+        row.push(0);
+      }
+    }
+    arr.push(row);
+  }
+
+  var numbers = [];
+  for (let i = 1; i <= width * height - 1; i++) {
+    numbers.push(i);
+  }
+
+  do {
+    var shuffled = [...numbers];
+    shuffleArray(shuffled);
+    var idx = 0;
+    for (let i = 1; i <= height; i++) {
+      for (let j = 1; j <= width; j++) {
+        if (i === height && j === width) {
+          arr[i][j] = 0;
+        } else {
+          arr[i][j] = shuffled[idx++];
+        }
+      }
+    }
+  } while (!isSolvable(arr, width, height));
+
+  return arr;
+}
+
+var k = 0;
+var w = Math.floor(document.documentElement.clientWidth / grid);
+var h = Math.floor(document.documentElement.clientHeight / grid);
+var p = w * h;
+var t = 0;
+canvas.width = w * grid;
+canvas.height = h * grid;
+
+var a = [];
+var b = [];
+
+var data = confirm("Hardmode?");
+
+if (!data) {
+  // Лёгкий режим - решаемая случайная расстановка
+  a = createSolvableInitial(w, h);
+  
+  // Целевое состояние
+  k = 0;
+  for (let i = 0; i < h + 2; i++) {
+    let row = [];
+    for (let j = 0; j < w + 2; j++) {
+      if (i === h && j === w) {
+        row.push(0);
+      } else if (i === 0 || j === 0 || i === h + 1 || j === w + 1) {
+        row.push(-1);
+      } else {
+        k++;
+        row.push(k);
+      }
+    }
+    b.push(row);
+  }
+} else {
+  // Хардмод - две решаемые случайные расстановки
+  a = createSolvableInitial(w, h);
+  b = createSolvableInitial(w, h);
+}
+
+// Отрисовка начального состояния
+for (let i = 1; i <= h; i++) {
+  for (let j = 1; j <= w; j++) {
+    if (a[i][j] > 0) {
+      context.fillStyle = '#e0ffff';
+      context.fillRect((j - 1) * grid, (i - 1) * grid, grid - 1, grid - 1);
+      context.font = grid / 2 + 'px monospace';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillStyle = '#9966FF';
+      context.fillText(a[i][j], (j - 0.5) * grid, (i - 0.5) * grid);
+    }
+  }
+}
+
+var win = false;
+function showWin() {
+  cancelAnimationFrame(rAF);
+  win = true;
+  context.fillStyle = 'black';
+  context.globalAlpha = 0.75;
+  context.fillRect(0, canvas.height / 2 - grid, canvas.width, grid * 2);
+  context.globalAlpha = 1;
+  context.fillStyle = 'white';
+  context.font = grid + 'px monospace';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.fillText('WIN!', canvas.width / 2, canvas.height / 2);
+}
+
+function checkWin() {
+  t = 0;
+  for (let i = 1; i <= h; i++) {
+    for (let j = 1; j <= w; j++) {
+      if (a[i][j] === b[i][j]) {
+        t++;
+      }
+    }
+  }
+  if (t === p) {
+    showWin();
+  }
+}
+
+function gameLoop() {
+ 
+  rAF = requestAnimationFrame(gameLoop);
+  // Подсвечиваем правильно стоящие фишки
+  for (let i = 1; i <= h; i++) {
+    for (let j = 1; j <= w; j++) {
+      if (a[i][j] > 0 && a[i][j] === b[i][j]) {
+        context.fillStyle = '#FF66FF';
+        context.fillRect((j - 1) * grid, (i - 1) * grid, grid - 1, grid - 1);
+        context.font = grid / 2 + 'px monospace';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillStyle = '#FFFFFF';
+        context.fillText(a[i][j], (j - 0.5) * grid, (i - 0.5) * grid);
+      }
+    }
+  }
+  checkWin();
+}
+
+document.onclick = (el) => {
+  if (win) return;
+
+  let j = Math.floor(el.offsetX / grid) + 1;
+  let i = Math.floor(el.offsetY / grid) + 1;
+
+  if (a[i][j] <= 0) return;
+
+  // Проверяем соседние клетки на пустоту и двигаем
+  if (a[i - 1][j] === 0) {
+    moveTile(i, j, i - 1, j);
+  } else if (a[i + 1][j] === 0) {
+    moveTile(i, j, i + 1, j);
+  } else if (a[i][j - 1] === 0) {
+    moveTile(i, j, i, j - 1);
+  } else if (a[i][j + 1] === 0) {
+    moveTile(i, j, i, j + 1);
+  }
+};
+
+function moveTile(fromI, fromJ, toI, toJ) {
+  // Очищаем старую позицию
+  context.fillStyle = '#000';
+  context.fillRect((fromJ - 1) * grid, (fromI - 1) * grid, grid - 1, grid - 1);
+  // Рисуем плитку на новой позиции
+  context.fillStyle = '#e0ffff';
+  context.fillRect((toJ - 1) * grid, (toI - 1) * grid, grid - 1, grid - 1);
+  context.font = grid / 2 + 'px monospace';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.fillStyle = '#9966FF';
+  context.fillText(a[fromI][fromJ], (toJ - 0.5) * grid, (toI - 0.5) * grid);
+
+  // Обновляем массив
+  a[toI][toJ] = a[fromI][fromJ];
+  a[fromI][fromJ] = 0;
+}
+
+var rAF = requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

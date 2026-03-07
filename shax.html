@@ -1,0 +1,1642 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/favicon.png" sizes="32x32" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Шашки</title>
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
+    body {
+        background: linear-gradient(135deg, #0c0c0c, #1a1a1a);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        touch-action: none;
+        min-height: 100vh;
+        min-height: 100dvh;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        overflow-x: hidden;
+        color: #fff;
+        padding: clamp(10px, 3vw, 20px);
+    }
+    
+    .game-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: clamp(15px, 4vw, 25px);
+        width: 100%;
+        max-width: min(95vw, 800px);
+        padding: clamp(10px, 3vw, 20px);
+        margin: 0 auto;
+    }
+    
+    /* Экран выбора режима игры */
+    .mode-selection {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: clamp(20px, 5vw, 30px);
+        width: 100%;
+        padding: clamp(15px, 4vw, 25px);
+    }
+    
+    .mode-title {
+        font-size: clamp(1.8rem, 8vw, 3rem);
+        font-weight: 300;
+        color: white;
+        text-align: center;
+        margin-bottom: clamp(5px, 2vw, 10px);
+        text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        letter-spacing: clamp(1px, 0.5vw, 2px);
+        line-height: 1.2;
+    }
+    
+    .mode-options {
+        display: flex;
+        gap: clamp(15px, 4vw, 25px);
+        justify-content: center;
+        flex-wrap: wrap;
+        width: 100%;
+    }
+    
+    .mode-option {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: clamp(15px, 3vw, 20px);
+        padding: clamp(20px, 4vw, 30px);
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: clamp(10px, 2vw, 15px);
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        width: min(90vw, 200px);
+        min-height: min(40vw, 180px);
+        color: white;
+        text-align: center;
+        backdrop-filter: blur(10px);
+    }
+    
+    .mode-option:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+    
+    .mode-icon {
+        font-size: clamp(2.5rem, 12vw, 4rem);
+        margin-bottom: clamp(3px, 1vw, 5px);
+    }
+    
+    .mode-name {
+        font-size: clamp(1rem, 4.5vw, 1.4rem);
+        font-weight: 500;
+    }
+    
+    .mode-description {
+        text-align: center;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: clamp(0.8rem, 3.5vw, 1rem);
+        line-height: 1.4;
+    }
+    
+    /* Экран настройки онлайн игры */
+    .online-setup {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: clamp(15px, 4vw, 25px);
+        width: 100%;
+        max-width: min(95vw, 500px);
+        color: white;
+        padding: clamp(15px, 4vw, 25px);
+    }
+    
+    .online-title {
+        font-size: clamp(1.4rem, 6vw, 2rem);
+        font-weight: 300;
+        text-align: center;
+        margin-bottom: clamp(8px, 2vw, 12px);
+    }
+    
+    .game-controls {
+        display: flex;
+        flex-direction: column;
+        gap: clamp(12px, 3vw, 18px);
+        margin-bottom: clamp(10px, 3vw, 15px);
+        width: 100%;
+        align-items: center;
+    }
+    
+    .btn {
+        padding: clamp(10px, 3vw, 14px) clamp(20px, 4vw, 28px);
+        background: linear-gradient(135deg, #668aff, #00aeff);
+        border: none;
+        border-radius: clamp(6px, 1.5vw, 10px);
+        color: white;
+        cursor: pointer;
+        font-size: clamp(0.9rem, 3.5vw, 1.1rem);
+        transition: all 0.3s ease;
+        font-weight: 600;
+        width: min(90%, 250px);
+        text-align: center;
+    }
+    
+    .btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 15px rgba(102, 138, 255, 0.5);
+    }
+    
+    .btn:active {
+        transform: scale(0.98);
+    }
+    
+    .btn:disabled {
+        background: #666;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+    
+    .btn.secondary {
+        background: linear-gradient(135deg, #FF66FF, #CC66FF);
+    }
+    
+    input {
+        padding: clamp(10px, 3vw, 14px);
+        border-radius: clamp(6px, 1.5vw, 10px);
+        border: 2px solid #333;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        font-size: clamp(0.9rem, 3.5vw, 1.1rem);
+        width: min(90%, 250px);
+        text-align: center;
+    }
+    
+    input::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+    }
+    
+    .game-id-display {
+        margin: clamp(8px, 2vw, 12px) 0;
+        font-size: clamp(1rem, 4vw, 1.3rem);
+        background: rgba(255, 255, 255, 0.1);
+        padding: clamp(10px, 3vw, 14px) clamp(15px, 3vw, 20px);
+        border-radius: clamp(6px, 1.5vw, 10px);
+        text-align: center;
+        word-break: break-all;
+    }
+    
+    .waiting-message {
+        margin: clamp(8px, 2vw, 12px) 0;
+        font-size: clamp(1rem, 4vw, 1.3rem);
+        color: #00ff88;
+        animation: pulse 2s infinite;
+        text-align: center;
+    }
+    
+    .error-message {
+        color: #ff4757;
+        margin: clamp(8px, 2vw, 12px) 0;
+        text-align: center;
+        font-size: clamp(0.9rem, 3.5vw, 1.1rem);
+    }
+    
+    /* Кнопка возврата */
+    .back-btn {
+        position: fixed;
+        top: clamp(10px, 3vw, 20px);
+        left: clamp(10px, 3vw, 20px);
+        background: rgba(255, 255, 255, 0.1);
+        border: none;
+        border-radius: clamp(6px, 1.5vw, 10px);
+        color: white;
+        padding: clamp(8px, 2vw, 12px) clamp(12px, 3vw, 18px);
+        cursor: pointer;
+        font-size: clamp(0.9rem, 3.5vw, 1.1rem);
+        transition: all 0.3s ease;
+        z-index: 1000;
+        backdrop-filter: blur(10px);
+    }
+    
+    .back-btn:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+    
+    /* Стили для игровой доски */
+    .game-board {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        grid-template-rows: repeat(8, 1fr);
+        width: 80vmin;
+        height: 80vmin;
+        max-width: 500px;
+        max-height: 500px;
+        border: 2px solid #333;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        background: #1a1a1a;
+        transform: rotate(0deg);
+        transition: transform 0.5s ease;
+    }
+    
+    .player1-board {
+        transform: rotate(180deg);
+    }
+    
+    .player2-board {
+        transform: rotate(0deg);
+    }
+    
+    .cell {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        transition: all 0.3s ease;
+    }
+    
+    .dark {
+        background: linear-gradient(135deg, #2d2d2d, #1a1a1a);
+    }
+    
+    .light {
+        background: linear-gradient(135deg, #4a4a4a, #2d2d2d);
+    }
+    
+    .cell:hover {
+        filter: brightness(1.2);
+    }
+    
+    .piece {
+        width: 85%;
+        height: 85%;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 10;
+        border: 2px solid transparent;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    }
+    
+    .piece.can-move {
+        box-shadow: 0 0 25px #ba8ddf, 0 0 35px #ddbdf7;
+        border-color: #cc8dff;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes glow-yellow {
+        0% { 
+            transform: scale(1); 
+            box-shadow: 0 0 20px #ffeb3b, 0 0 30px #ffeb3b;
+        }
+        100% { 
+            transform: scale(1.05); 
+            box-shadow: 0 0 30px #ffeb3b, 0 0 40px #ffeb3b, 0 0 50px #ffeb3b;
+        }
+    }
+    
+    .piece:hover {
+        transform: scale(1.08);
+        filter: brightness(1.2);
+    }
+    
+    .piece.selected {
+        transform: scale(1.1);
+        box-shadow: 0 0 25px #00ff88, 0 0 35px #00ff88, 0 0 45px #00ff88;
+        border-color: #00ff88;
+        animation: glow-green 1.5s infinite alternate;
+    }
+    
+    @keyframes glow-green {
+        0% { 
+            transform: scale(1); 
+            box-shadow: 0 0 20px #00ff88, 0 0 30px #00ff88;
+        }
+        100% { 
+            transform: scale(1.05); 
+            box-shadow: 0 0 30px #00ff88, 0 0 40px #00ff88, 0 0 50px #00ff88;
+        }
+    }
+    
+    .player1 {
+        background: linear-gradient(135deg, #FF66FF, #CC66FF);
+        border: 2px solid #CC00CC;
+    }
+    
+    .player2 {
+        background: linear-gradient(135deg, #668aff, #00aeff);
+        border: 2px solid #7536f5;
+    }
+    
+    .king::after {
+        content: "♛";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.4em;
+        color: #fff;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        font-weight: bold;
+    }
+    
+    .player1-board .king::after {
+        transform: translate(-50%, -50%) rotate(180deg);
+    }
+    
+    .player2-board .king::after {
+        transform: translate(-50%, -50%) rotate(0deg);
+    }
+    
+    .possible-move::before {
+        content: "";
+        position: absolute;
+        width: 25%;
+        height: 25%;
+        background: #00ff88;
+        border-radius: 50%;
+        z-index: 5;
+        box-shadow: 0 0 15px #00ff88, 0 0 25px #00ff88;
+        animation: glow-move 1s infinite alternate;
+    }
+    
+    @keyframes glow-move {
+        from { 
+            opacity: 0.6; 
+            transform: scale(0.8); 
+        }
+        to { 
+            opacity: 1; 
+            transform: scale(1.2); 
+        }
+    }
+    
+    .game-info {
+        display: flex;
+        gap: clamp(20px, 4vw, 40px);
+        margin-top: clamp(10px, 3vw, 20px);
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .player-info {
+        display: flex;
+        align-items: center;
+        gap: clamp(10px, 3vw, 15px);
+        padding: clamp(12px, 3vw, 15px) clamp(20px, 4vw, 25px);
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: clamp(8px, 2vw, 10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .player-color {
+        width: clamp(15px, 4vw, 20px);
+        height: clamp(15px, 4vw, 20px);
+        border-radius: 50%;
+    }
+    
+    .player1-color {
+        background: linear-gradient(135deg, #FF66FF, #CC66FF);
+    }
+    
+    .player2-color {
+        background: linear-gradient(135deg, #668aff, #00aeff);
+    }
+    
+    .current-player {
+        border-color: #00ff88;
+        box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+    }
+    
+    .status-message {
+        margin-top: clamp(10px, 3vw, 15px);
+        font-size: clamp(1rem, 4vw, 1.2em);
+        text-align: center;
+        min-height: 30px;
+    }
+    
+    @keyframes winnerGlow {
+        0% { 
+            transform: scale(1); 
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5); 
+        }
+        100% { 
+            transform: scale(1.1); 
+            box-shadow: 0 0 60px rgba(255, 255, 255, 0.8); 
+        }
+    }
+    
+    .hidden {
+        display: none !important;
+    }
+    
+    /* Ориентация экрана */
+    @media (max-height: 500px) and (orientation: landscape) {
+        body {
+            align-items: flex-start;
+            padding: 10px 0;
+        }
+        
+        .game-container {
+            gap: 10px;
+        }
+        
+        .mode-options {
+            flex-direction: row;
+            gap: 10px;
+        }
+        
+        .mode-option {
+            width: 150px;
+            min-height: 120px;
+            padding: 15px;
+            gap: 8px;
+        }
+        
+        .mode-icon {
+            font-size: 2rem;
+        }
+        
+        .mode-name {
+            font-size: 1rem;
+        }
+        
+        .mode-description {
+            font-size: 0.8rem;
+        }
+        
+        .game-board {
+            width: 70vmin;
+            height: 70vmin;
+        }
+    }
+    
+    /* Очень большие экраны */
+    @media (min-width: 1600px) {
+        .game-container {
+            max-width: 1200px;
+        }
+        
+        .mode-option {
+            width: 250px;
+            min-height: 220px;
+        }
+        
+        .online-setup {
+            max-width: 600px;
+        }
+    }
+    
+    /* Поддержка темной темы */
+    @media (prefers-color-scheme: light) {
+        body {
+            background: linear-gradient(135deg, #2c2c2c, #3a3a3a);
+        }
+    }
+    
+    /* Улучшения для касаний на мобильных */
+    @media (hover: none) {
+        .mode-option:hover {
+            transform: none;
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .btn:hover {
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .mode-option:active,
+        .btn:active {
+            transform: scale(0.95);
+        }
+    }
+    
+    /* Предотвращение выделения текста */
+    .no-select {
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+    
+    /* Улучшения производительности */
+    .will-change {
+        will-change: transform;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 0.6; }
+        50% { opacity: 1; }
+        100% { opacity: 0.6; }
+    }
+    
+    /* Плавная прокрутка */
+    html {
+        scroll-behavior: smooth;
+    }
+    
+    /* Фолбэк для старых браузеров */
+    @supports not (backdrop-filter: blur(10px)) {
+        .mode-option,
+        .back-btn {
+            background: rgba(255, 255, 255, 0.08);
+        }
+    }
+</style>
+</head>
+<body>
+    <button class="back-btn hidden" id="backBtn">← Назад</button>
+    
+    <div class="game-container">
+       
+        
+        <!-- Экран выбора режима игры -->
+        <div class="mode-selection" id="modeSelection">
+            <h2 class="mode-title">Выберите режим игры</h2>
+            <div class="mode-options">
+                <div class="mode-option" id="localMode">
+                    <div class="mode-icon">👥</div>
+                    <div class="mode-name">На одном устройстве</div>
+                    <div class="mode-description">Играйте вдвоем на одном устройстве</div>
+                </div>
+                <div class="mode-option" id="onlineMode">
+                    <div class="mode-icon">🌐</div>
+                    <div class="mode-name">Онлайн игра</div>
+                    <div class="mode-description">Играйте с другом через интернет</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Экран настройки онлайн игры -->
+        <div class="online-setup hidden" id="onlineSetup">
+            <h2 class="online-title">Онлайн игра</h2>
+            <div class="game-controls">
+                <button class="btn" id="createGame">Создать игру</button>
+                <button class="btn secondary" id="joinGame">Присоединиться</button>
+                <input type="text" id="gameIdInput" placeholder="ID игры">
+            </div>
+            
+            <div id="gameIdDisplay" class="game-id-display" style="display: none;"></div>
+            <div id="waitingMessage" class="waiting-message" style="display: none;">Ожидание второго игрока...</div>
+            <div id="errorMessage" class="error-message"></div>
+        </div>
+        
+        <!-- Игровая доска и информация -->
+        <div class="game-board hidden" id="board"></div>
+        
+        <div class="game-info hidden" id="gameInfo">
+            <div class="player-info" id="player1-info">
+                <div class="player-color player1-color"></div>
+                <span>Игрок 1</span>
+            </div>
+            <div class="player-info" id="player2-info">
+                <div class="player-color player2-color"></div>
+                <span>Игрок 2</span>
+            </div>
+        </div>
+        
+       
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue, update, get, remove } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyD90NTsd6knRycxFbpvyNWBPpD7XD5Ih70",
+            authDomain: "gaim-42aa5.firebaseapp.com",
+            databaseURL: "https://gaim-42aa5-default-rtdb.firebaseio.com",
+            projectId: "gaim-42aa5",
+            storageBucket: "gaim-42aa5.appspot.com",
+            messagingSenderId: "1036683439508",
+            appId: "1:1036683439508:web:b329b1257c9c89b3cef381",
+            measurementId: "G-5EE0W6HVJP"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        
+        // Переменные игры
+        let board = [];
+        let currentPlayer = 1;
+        let selectedPiece = null;
+        let mandatoryMoves = [];
+        let isMultipleJump = false;
+        let piecesWithMoves = [];
+        let gameId = null;
+        let playerNumber = null;
+        let gameRef = null;
+        let isMakingMove = false;
+        let gameMode = null; // 'local' или 'online'
+        let gameFinished = false; // ДОБАВЬТЕ эту переменную
+        // DOM элементы
+        const boardElement = document.getElementById('board');
+        const createGameBtn = document.getElementById('createGame');
+        const joinGameBtn = document.getElementById('joinGame');
+        const gameIdInput = document.getElementById('gameIdInput');
+        const gameIdDisplay = document.getElementById('gameIdDisplay');
+        const waitingMessage = document.getElementById('waitingMessage');
+        
+        const errorMessage = document.getElementById('errorMessage');
+        const player1Info = document.getElementById('player1-info');
+        const player2Info = document.getElementById('player2-info');
+        const modeSelection = document.getElementById('modeSelection');
+        const onlineSetup = document.getElementById('onlineSetup');
+        const gameInfo = document.getElementById('gameInfo');
+        const backBtn = document.getElementById('backBtn');
+        const localModeBtn = document.getElementById('localMode');
+        const onlineModeBtn = document.getElementById('onlineMode');
+        
+        // Обработчики выбора режима игры
+        localModeBtn.addEventListener('click', () => {
+            gameMode = 'local';
+            playerNumber = 1; // В локальной игре оба игрока на одном устройстве
+            showGameScreen();
+            initGame();
+        });
+        
+        onlineModeBtn.addEventListener('click', () => {
+            gameMode = 'online';
+            showOnlineSetup();
+        });
+        
+        // Кнопка возврата
+        backBtn.addEventListener('click', () => {
+            if (gameMode === 'online' && !boardElement.classList.contains('hidden')) {
+                // Возврат из игры в онлайн настройки
+                hideGameScreen();
+                showOnlineSetup();
+            } else {
+                // Возврат к выбору режима
+                resetGame();
+                showModeSelection();
+            }
+        });
+        
+        // Функции для управления экранами
+        function showModeSelection() {
+            modeSelection.classList.remove('hidden');
+            onlineSetup.classList.add('hidden');
+            boardElement.classList.add('hidden');
+            gameInfo.classList.add('hidden');
+           
+            backBtn.classList.add('hidden');
+        }
+        
+        function showOnlineSetup() {
+            modeSelection.classList.add('hidden');
+            onlineSetup.classList.remove('hidden');
+            boardElement.classList.add('hidden');
+            gameInfo.classList.add('hidden');
+           
+            backBtn.classList.remove('hidden');
+        }
+        
+        function showGameScreen() {
+            modeSelection.classList.add('hidden');
+            onlineSetup.classList.add('hidden');
+            boardElement.classList.remove('hidden');
+            gameInfo.classList.remove('hidden');
+           
+            backBtn.classList.remove('hidden');
+        }
+        
+        function hideGameScreen() {
+            boardElement.classList.add('hidden');
+            gameInfo.classList.add('hidden');
+           
+        }
+        
+        // Создание игры
+        createGameBtn.addEventListener('click', async () => {
+            try {
+                gameId = generateGameId();
+                playerNumber = 1;
+                
+                // Инициализация игры
+                initGame();
+                
+                // Случайный выбор первого игрока для онлайн игры
+                currentPlayer = Math.random() < 0.5 ? 1 : 2;
+                
+                const gameData = {
+                    player1: getPlayerName(),
+                    player2: null,
+                    board: board,
+                    currentPlayer: currentPlayer,
+                    status: 'waiting',
+                    createdAt: Date.now()
+                };
+                
+                await set(ref(database, 'checkersGames/' + gameId), gameData);
+                
+                gameIdDisplay.textContent = `ID игры: ${gameId}`;
+                gameIdDisplay.style.display = 'block';
+                waitingMessage.style.display = 'block';
+                errorMessage.textContent = '';
+               
+                
+                setupGameListener();
+                
+            } catch (error) {
+                console.error('Ошибка создания игры:', error);
+                errorMessage.textContent = 'Ошибка создания игры.';
+            }
+        });
+        
+        // Присоединение к игре
+        joinGameBtn.addEventListener('click', async () => {
+            const joinGameId = gameIdInput.value.trim();
+            if (!joinGameId) {
+                errorMessage.textContent = 'Введите ID игры';
+                return;
+            }
+            
+            try {
+                const snapshot = await get(ref(database, 'checkersGames/' + joinGameId));
+                
+                if (snapshot.exists()) {
+                    const gameData = snapshot.val();
+                    if (gameData.status === 'waiting') {
+                        gameId = joinGameId;
+                        playerNumber = 2;
+                        
+                        const updates = {
+                            player2: getPlayerName(),
+                            status: 'active'
+                        };
+                        
+                        await update(ref(database, 'checkersGames/' + gameId), updates);
+                        
+                        gameIdDisplay.textContent = `ID игры: ${gameId}`;
+                        gameIdDisplay.style.display = 'block';
+                        waitingMessage.style.display = 'none';
+                        errorMessage.textContent = '';
+                        
+                        setupGameListener();
+                    } else {
+                        errorMessage.textContent = 'Игра уже началась или завершена';
+                    }
+                } else {
+                    errorMessage.textContent = 'Игра не найдена';
+                }
+            } catch (error) {
+                console.error('Ошибка присоединения к игре:', error);
+                errorMessage.textContent = 'Ошибка присоединения к игре.';
+            }
+        });
+        
+// Слушатель изменений игры
+function setupGameListener() {
+    gameRef = ref(database, 'checkersGames/' + gameId);
+    onValue(gameRef, (snapshot) => {
+        // ДОБАВЛЕНО: Игнорируем обновления если игра завершена
+        if (gameFinished) return;
+        
+        // ИГНОРИРУЕМ ОБНОВЛЕНИЯ ТОЛЬКО ЕСЛИ МЫ САМИ ДЕЛАЕМ ХОД
+        if (isMakingMove) {
+            // Сбрасываем флаг после короткой задержки
+            setTimeout(() => {
+                isMakingMove = false;
+            }, 500);
+            return;
+        }
+        
+        const gameData = snapshot.val();
+        if (gameData) {
+            updateGameState(gameData);
+            
+            // Показываем игровую доску, когда игра активна
+            if (gameData.status === 'active' && boardElement.classList.contains('hidden')) {
+                showGameScreen();
+            }
+        }
+    });
+}
+        
+// ДОБАВЬТЕ ЭТУ ФУНКЦИЮ:
+function updateOnlineGameUI() {
+    if (gameMode === 'online') {
+        // Обновляем подсветку текущего игрока
+        player1Info.classList.toggle('current-player', currentPlayer === 1);
+        player2Info.classList.toggle('current-player', currentPlayer === 2);
+        
+        // Обновляем статус-сообщение
+        if (currentPlayer === playerNumber) {
+            statusMessage.textContent = 'Ваш ход';
+            statusMessage.style.color = '#00ff88';
+        } else {
+            statusMessage.textContent = 'Ход противника';
+            statusMessage.style.color = '#ff4757';
+        }
+        
+                    player1Info.classList.toggle('current-player', currentPlayer === 1);
+                    player2Info.classList.toggle('current-player', currentPlayer === 2);
+    }
+}
+
+
+
+// Обновление состояния из Firebase
+function updateGameState(gameData) {
+    try {
+        // ДОБАВЛЕНО: Игнорируем обновления, если делаем ход
+        if (isMakingMove) {
+            return;
+        }
+        
+        // Безопасное обновление доски
+        if (gameData.board && Array.isArray(gameData.board)) {
+            board = normalizeBoard(gameData.board);
+        } else {
+            board = getInitialBoard();
+        }
+        
+        currentPlayer = gameData.currentPlayer || 1;
+        
+        if (gameData.status === 'waiting') {
+            waitingMessage.style.display = 'block';
+        } else {
+            waitingMessage.style.display = 'none';
+            
+            // Обновляем имена игроков из данных игры
+            player1Info.querySelector('span').textContent = gameData.player1 || 'Игрок 1';
+            player2Info.querySelector('span').textContent = gameData.player2 || 'Игрок 2';
+        }
+        
+        // ДОБАВЛЕНО: Проверяем, есть ли победитель в данных Firebase
+        if (gameData.status === 'finished' && gameData.winner) {
+            // Устанавливаем флаг завершения игры
+            gameFinished = true;
+            
+            // Показываем победителя только если еще не показывали
+            if (!document.querySelector('.winner-overlay')) {
+                setTimeout(() => showWinner(gameData.winner), 100);
+            }
+            return; // Прерываем дальнейшее обновление, если игра завершена
+        }
+        
+        // Сбрасываем состояние выбора
+        selectedPiece = null;
+        isMultipleJump = false;
+        
+        // ВАЖНО: Сначала находим доступные ходы, потом рендерим
+        findMandatoryMoves();
+        findPiecesWithMoves();
+        renderBoard();
+        
+        // ВЫЗЫВАЕМ ОБНОВЛЕНИЕ UI ДЛЯ ОНЛАЙН-РЕЖИМА
+        if (gameMode === 'online') {
+            updateOnlineGameUI();
+        }
+        
+        // Проверяем победителя локально (только если игра не завершена)
+        if (!gameFinished) {
+            checkWinner();
+        }
+        
+    } catch (error) {
+        console.error('Ошибка обновления состояния:', error);
+    }
+}
+        
+        // Нормализация доски - исправление структуры данных
+        function normalizeBoard(firebaseBoard) {
+            const normalizedBoard = [];
+            
+            for (let row = 0; row < 8; row++) {
+                normalizedBoard[row] = [];
+                for (let col = 0; col < 8; col++) {
+                    // Безопасное получение данных ячейки
+                    const cell = firebaseBoard[row] && firebaseBoard[row][col];
+                    
+                    if (cell && typeof cell === 'object' && cell.player) {
+                        // Восстанавливаем правильную структуру объекта шашки
+                        normalizedBoard[row][col] = {
+                            player: parseInt(cell.player),
+                            isKing: Boolean(cell.isKing)
+                        };
+                    } else {
+                        normalizedBoard[row][col] = null;
+                    }
+                }
+            }
+            
+            return normalizedBoard;
+        }
+        
+        // Сохранение состояния в Firebase
+        async function saveGameState() {
+            if (!gameRef) return;
+            
+            isMakingMove = true;
+            
+            const updates = {
+                board: board,
+                currentPlayer: currentPlayer
+            };
+            
+            try {
+                await update(gameRef, updates);
+                console.log('Игра сохранена в Firebase');
+            } catch (error) {
+                console.error('Ошибка сохранения игры:', error);
+            }
+            
+            // НЕ СБРАСЫВАЕМ isMakingMove сразу - это сделает слушатель
+        }
+        
+// ИНИЦИАЛИЗАЦИЯ ИГРЫ
+function initGame() {
+    board = getInitialBoard();
+    currentPlayer = Math.random() < 0.5 ? 1 : 2; // Случайный выбор первого игрока
+    selectedPiece = null;
+    mandatoryMoves = [];
+    isMultipleJump = false;
+    piecesWithMoves = [];
+    gameFinished = false; // ДОБАВЛЕНО: Сбрасываем флаг завершения игры
+    
+    findMandatoryMoves();
+    findPiecesWithMoves();
+    renderBoard();
+    updateGameUI();
+}
+        
+        // Обновление интерфейса для локальной игры
+       function updateGameUI() {
+    // Сбрасываем подсветку
+    player1Info.classList.remove('current-player');
+    player2Info.classList.remove('current-player');
+    
+    if (gameMode === 'local') {
+        // Локальная игра
+        player1Info.classList.toggle('current-player', currentPlayer === 1);
+        player2Info.classList.toggle('current-player', currentPlayer === 2);
+        
+        player1Info.querySelector('span').textContent = 'Игрок 1';
+        player2Info.querySelector('span').textContent = 'Игрок 2';
+        
+    } else if (gameMode === 'online') {
+        // Онлайн игра
+        player1Info.classList.toggle('current-player', currentPlayer === 1);
+        player2Info.classList.toggle('current-player', currentPlayer === 2);
+        
+
+    }
+}
+        
+        // Создание начальной доски
+        function getInitialBoard() {
+            const initialBoard = [];
+            
+            for (let row = 0; row < 8; row++) {
+                initialBoard[row] = [];
+                for (let col = 0; col < 8; col++) {
+                    initialBoard[row][col] = null;
+                }
+            }
+            
+            // Расставляем шашки игрока 1 (красные)
+            for (let row = 0; row < 3; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if ((row + col) % 2 === 1) {
+                        initialBoard[row][col] = { player: 1, isKing: false };
+                    }
+                }
+            }
+            
+            // Расставляем шашки игрока 2 (синие)
+            for (let row = 5; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if ((row + col) % 2 === 1) {
+                        initialBoard[row][col] = { player: 2, isKing: false };
+                    }
+                }
+            }
+            
+            return initialBoard;
+        }
+        
+        // ОТРИСОВКА ДОСКИ с улучшенной подсветкой
+        function renderBoard() {
+            try {
+                boardElement.innerHTML = '';
+                
+                // В локальной игре не переворачиваем доску
+                if (gameMode === 'online') {
+                    if (playerNumber === 1) {
+                        boardElement.classList.add('player1-board');
+                        boardElement.classList.remove('player2-board');
+                    } else {
+                        boardElement.classList.add('player2-board');
+                        boardElement.classList.remove('player1-board');
+                    }
+                } else {
+                    // В локальной игре доска всегда ориентирована одинаково
+                    boardElement.classList.remove('player1-board', 'player2-board');
+                }
+                
+                // Гарантируем, что board - правильный массив
+                if (!Array.isArray(board) || board.length !== 8) {
+                    console.warn('Некорректная доска, переинициализируем');
+                    board = getInitialBoard();
+                }
+                
+                for (let row = 0; row < 8; row++) {
+                    // Гарантируем, что каждая строка - массив
+                    if (!Array.isArray(board[row])) {
+                        board[row] = Array(8).fill(null);
+                    }
+                    
+                    for (let col = 0; col < 8; col++) {
+                        const cell = document.createElement('div');
+                        cell.className = `cell ${(row + col) % 2 === 0 ? 'light' : 'dark'}`;
+                        
+                        // В локальной игре координаты не переворачиваем
+                        let displayRow, displayCol;
+                        
+                        if (gameMode === 'online' && playerNumber === 1) {
+                            // Для онлайн игрока 1 переворачиваем доску
+                            displayRow = 7 - row;
+                            displayCol = 7 - col;
+                        } else {
+                            // Для локальной игры и онлайн игрока 2 оставляем как есть
+                            displayRow = row;
+                            displayCol = col;
+                        }
+                        
+                        cell.dataset.row = row;  // Реальные координаты для логики
+                        cell.dataset.col = col;
+                        cell.dataset.displayRow = displayRow; // Отображаемые координаты
+                        cell.dataset.displayCol = displayCol;
+                        
+                        // Получаем шашку по реальным координатам
+                        const piece = board[row][col];
+                        if (piece && typeof piece === 'object' && piece.player) {
+                            const pieceElement = document.createElement('div');
+                            pieceElement.className = `piece player${piece.player}`;
+                            
+                            if (piece.isKing) {
+                                pieceElement.classList.add('king');
+                            }
+                            
+                            // УЛУЧШЕННАЯ ПОДСВЕТКА: Подсвечиваем шашки, которые могут ходить
+                            const canMove = piecesWithMoves.some(p => 
+                                p && p.row === row && p.col === col
+                            );
+                            
+                            // В локальной игре подсвечиваем всегда, в онлайн - только когда наш ход
+                            if (canMove && (gameMode === 'local' || currentPlayer === playerNumber)) {
+                                pieceElement.classList.add('can-move');
+                            }
+                            
+                            // Выделяем выбранную шашку
+                            if (selectedPiece && selectedPiece.row === row && selectedPiece.col === col) {
+                                pieceElement.classList.add('selected');
+                            }
+                            
+                            // Добавляем обработчик клика
+                            // В локальной игре всегда можно кликать, в онлайн - только когда наш ход
+                            if ((gameMode === 'local' || currentPlayer === playerNumber) && 
+                                (!isMultipleJump || (selectedPiece && selectedPiece.row === row && selectedPiece.col === col))) {
+                                pieceElement.addEventListener('click', () => handlePieceClick(row, col));
+                            }
+                            
+                            cell.appendChild(pieceElement);
+                        } else {
+                            // Добавляем обработчик клика на пустую клетку
+                            if ((gameMode === 'local' || currentPlayer === playerNumber) && selectedPiece) {
+                                cell.addEventListener('click', () => handleCellClick(row, col));
+                            }
+                        }
+                        
+                        boardElement.appendChild(cell);
+                    }
+                }
+                
+                // Показываем возможные ходы для выбранной шашки
+                if (selectedPiece) {
+                    const validMoves = getValidMoves(selectedPiece.row, selectedPiece.col);
+                    showPossibleMoves(validMoves);
+                }
+                
+            } catch (error) {
+                console.error('Ошибка отрисовки доски:', error);
+                errorMessage.textContent = 'Ошибка отрисовки доски';
+            }
+        }
+        
+        // УЛУЧШЕННАЯ ФУНКЦИЯ: Находим шашки, которые могут ходить
+        function findPiecesWithMoves() {
+            piecesWithMoves = [];
+            
+            // Сначала проверяем обязательные взятия
+            findMandatoryMoves();
+            
+            if (mandatoryMoves.length > 0 && !isMultipleJump) {
+                // Если есть обязательные взятия, показываем только эти шашки
+                piecesWithMoves = mandatoryMoves.map(move => ({
+                    row: move.row,
+                    col: move.col
+                }));
+                console.log('Обязательные ходы найдены:', piecesWithMoves.length);
+            } else {
+                // Иначе показываем все шашки, которые могут ходить
+                for (let row = 0; row < 8; row++) {
+                    for (let col = 0; col < 8; col++) {
+                        const piece = board[row][col];
+                        if (piece && piece.player === currentPlayer) {
+                            const moves = getValidMoves(row, col);
+                            if (moves.length > 0) {
+                                piecesWithMoves.push({ row, col });
+                            }
+                        }
+                    }
+                }
+                console.log('Обычные ходы найдены:', piecesWithMoves.length);
+            }
+            
+            // Отладочная информация
+            if (piecesWithMoves.length === 0) {
+                console.log('Нет доступных ходов для текущего игрока');
+            }
+        }
+        async function saveWinner(winner) {
+    if (!gameRef) return;
+    
+    const updates = {
+        winner: winner,
+        status: 'finished'
+    };
+    
+    try {
+        await update(gameRef, updates);
+        
+    } catch (error) {
+        console.error('Ошибка сохранения победителя:', error);
+    }
+}
+        
+        // ПРОВЕРКА НА ПОБЕДИТЕЛЯ
+// ПРОВЕРКА НА ПОБЕДИТЕЛЯ
+// ПРОВЕРКА НА ПОБЕДИТЕЛЯ
+function checkWinner() {
+    // ДОБАВЛЕНО: Если игра уже завершена, не проверяем снова
+    if (gameFinished) return false;
+    
+    let player1Pieces = 0;
+    let player2Pieces = 0;
+    let player1HasMoves = false;
+    let player2HasMoves = false;
+    
+    for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+            const piece = board[row][col];
+            if (piece) {
+                if (piece.player === 1) {
+                    player1Pieces++;
+                    if (!player1HasMoves) {
+                        player1HasMoves = getValidMoves(row, col).length > 0;
+                    }
+                } else {
+                    player2Pieces++;
+                    if (!player2HasMoves) {
+                        player2HasMoves = getValidMoves(row, col).length > 0;
+                    }
+                }
+            }
+        }
+    }
+    
+    if (player1Pieces === 0 || (currentPlayer === 1 && !player1HasMoves)) {
+        // ДОБАВЛЕНО: Устанавливаем флаг завершения игры
+        gameFinished = true;
+        
+        // Сохраняем победителя для онлайн-режима
+        if (gameMode === 'online') {
+            saveWinner(2);
+        }
+        setTimeout(() => showWinner(2), 100);
+        return true;
+    }
+    if (player2Pieces === 0 || (currentPlayer === 2 && !player2HasMoves)) {
+        // ДОБАВЛЕНО: Устанавливаем флаг завершения игры
+        gameFinished = true;
+        
+        // Сохраняем победителя для онлайн-режима
+        if (gameMode === 'online') {
+            saveWinner(1);
+        }
+        setTimeout(() => showWinner(1), 100);
+        return true;
+    }
+    
+    return false;
+}
+        // ПОКАЗ ПОБЕДИТЕЛЯ
+// ПОКАЗ ПОБЕДИТЕЛЯ
+function showWinner(winner) {
+        if (document.querySelector('.winner-overlay')) {
+        return;
+    }
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+    overlay.style.display = 'flex';
+    overlay.style.justifyContent = 'center';
+    overlay.style.alignItems = 'center';
+    overlay.style.zIndex = '1000';
+    overlay.style.flexDirection = 'column';
+    overlay.style.gap = '30px';
+    
+    // Создаем контейнер для анимации победной шашки
+    const winnerPiece = document.createElement('div');
+    winnerPiece.style.width = '120px';
+    winnerPiece.style.height = '120px';
+    winnerPiece.style.borderRadius = '50%';
+    winnerPiece.style.position = 'relative';
+    winnerPiece.style.display = 'flex';
+    winnerPiece.style.justifyContent = 'center';
+    winnerPiece.style.alignItems = 'center';
+    winnerPiece.style.boxShadow = '0 0 30px rgba(255, 255, 255, 0.5)';
+    winnerPiece.style.animation = 'winnerGlow 1.5s infinite alternate';
+    
+    // Применяем стили в зависимости от победителя
+    if (winner === 1) {
+        winnerPiece.style.background = 'linear-gradient(135deg, #FF66FF, #CC66FF)';
+        winnerPiece.style.border = '3px solid #CC00CC';
+        
+        // Добавляем корону  для победителя 1
+      winnerPiece.innerHTML = `
+            <div style="
+                position: absolute;
+                top: -30px;
+                left: 50%;
+                transform: translateX(-50%);
+                font-size: 3em;
+                color: gold;
+                text-shadow: 0 2px 10px rgba(255, 215, 0, 0.8);
+                z-index: 1001;
+            ">♛</div>
+        `;
+    } else {
+        winnerPiece.style.background = 'linear-gradient(135deg, #668aff, #00aeff)';
+        winnerPiece.style.border = '3px solid #7536f5';
+        
+        // Добавляем корону  для победителя 2
+        winnerPiece.innerHTML = `
+            <div style="
+                position: absolute;
+                top: -30px;
+                left: 50%;
+                transform: translateX(-50%);
+                font-size: 3em;
+                color: gold;
+                text-shadow: 0 2px 10px rgba(255, 215, 0, 0.8);
+                z-index: 1001;
+            ">♛</div>
+        `;
+    }
+    
+    const winnerText = document.createElement('div');
+    winnerText.style.fontSize = '2.5em';
+    winnerText.style.color = 'white';
+    winnerText.style.textAlign = 'center';
+    
+    
+    const newGameBtn = document.createElement('button');
+    newGameBtn.textContent = 'Новая игра';
+    newGameBtn.className = 'btn';
+    newGameBtn.addEventListener('click', () => {
+        document.body.removeChild(overlay);
+        if (gameMode === 'online') {
+            resetGame();
+        } else {
+            initGame();
+        }
+    });
+    
+    overlay.appendChild(winnerPiece);
+    overlay.appendChild(winnerText);
+    overlay.appendChild(newGameBtn);
+    document.body.appendChild(overlay);
+}
+        
+// Сброс игры
+function resetGame() {
+    if (gameRef) {
+        remove(gameRef);
+    }
+    
+    gameId = null;
+    playerNumber = null;
+    gameRef = null;
+    selectedPiece = null;
+    isMultipleJump = false;
+    gameMode = null;
+    isMakingMove = false;
+    gameFinished = false; // ДОБАВЛЕНО: Сбрасываем флаг завершения игры
+    
+    gameIdDisplay.style.display = 'none';
+    waitingMessage.style.display = 'none';
+    
+    errorMessage.textContent = '';
+    
+    player1Info.classList.remove('current-player');
+    player2Info.classList.remove('current-player');
+    
+    boardElement.innerHTML = '';
+    
+    // ДОБАВЛЕНО: Удаляем окно победителя если оно есть
+    const winnerOverlay = document.querySelector('.winner-overlay');
+    if (winnerOverlay) {
+        document.body.removeChild(winnerOverlay);
+    }
+    
+    showModeSelection();
+}
+        
+        // ПОИСК ОБЯЗАТЕЛЬНЫХ ХОДОВ
+        function findMandatoryMoves() {
+            mandatoryMoves = [];
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const piece = board[row][col];
+                    if (piece && piece.player === currentPlayer) {
+                        const moves = getValidMoves(row, col);
+                        const captureMoves = moves.filter(move => move.captured);
+                        
+                        if (captureMoves.length > 0) {
+                            mandatoryMoves.push({
+                                row,
+                                col,
+                                moves: captureMoves
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        
+        // ПОЛУЧЕНИЕ ДОПУСТИМЫХ ХОДОВ
+        function getValidMoves(row, col) {
+            const piece = board[row][col];
+            if (!piece) return [];
+
+            const moves = [];
+            
+            if (!piece.isKing) {
+                const captureDirections = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+                
+                for (const [dr, dc] of captureDirections) {
+                    const jumpRow = row + dr * 2;
+                    const jumpCol = col + dc * 2;
+                    
+                    if (jumpRow >= 0 && jumpRow < 8 && jumpCol >= 0 && jumpCol < 8) {
+                        const targetCell = board[jumpRow] && board[jumpRow][jumpCol];
+                        if (targetCell === null) {
+                            const midRow = row + dr;
+                            const midCol = col + dc;
+                            const midPiece = board[midRow] && board[midRow][midCol];
+                            
+                            if (midPiece && midPiece.player !== piece.player) {
+                                moves.push({
+                                    row: jumpRow,
+                                    col: jumpCol,
+                                    captured: { row: midRow, col: midCol }
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                if (moves.length > 0) {
+                    return moves;
+                }
+                
+                if (!isMultipleJump) {
+                    const forwardDirections = piece.player === 1 ? 
+                        [[1, -1], [1, 1]] : 
+                        [[-1, -1], [-1, 1]];
+                    
+                    for (const [dr, dc] of forwardDirections) {
+                        const newRow = row + dr;
+                        const newCol = col + dc;
+                        
+                        if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
+                            if (board[newRow][newCol] === null) {
+                                moves.push({
+                                    row: newRow,
+                                    col: newCol,
+                                    captured: null
+                                });
+                            }
+                        }
+                    }
+                }
+            } else {
+                const directions = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+                
+                for (const [dr, dc] of directions) {
+                    let foundEnemy = false;
+                    let enemyRow = -1;
+                    let enemyCol = -1;
+                    
+                    for (let distance = 1; distance < 8; distance++) {
+                        const checkRow = row + dr * distance;
+                        const checkCol = col + dc * distance;
+                        
+                        if (checkRow < 0 || checkRow >= 8 || checkCol < 0 || checkCol >= 8) break;
+                        
+                        if (foundEnemy) {
+                            if (board[checkRow][checkCol] === null) {
+                                moves.push({
+                                    row: checkRow,
+                                    col: checkCol,
+                                    captured: { row: enemyRow, col: enemyCol }
+                                });
+                            } else {
+                                break;
+                            }
+                        } else {
+                            const checkPiece = board[checkRow][checkCol];
+                            if (checkPiece !== null) {
+                                if (checkPiece.player === piece.player) {
+                                    break;
+                                } else {
+                                    foundEnemy = true;
+                                    enemyRow = checkRow;
+                                    enemyCol = checkCol;
+                                }
+                            } else if (!isMultipleJump) {
+                                moves.push({
+                                    row: checkRow,
+                                    col: checkCol,
+                                    captured: null
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                const captureMoves = moves.filter(move => move.captured);
+                if (captureMoves.length > 0) {
+                    return captureMoves;
+                }
+            }
+            
+            return moves;
+        }
+        
+        // ОБРАБОТКА КЛИКА ПО ШАШКЕ
+        function handlePieceClick(row, col) {
+            if (gameMode === 'online' && currentPlayer !== playerNumber) {
+               
+                return;
+            }
+            
+            const piece = board[row][col];
+            if (!piece || piece.player !== currentPlayer) return;
+            
+            if (isMultipleJump && selectedPiece && (selectedPiece.row !== row || selectedPiece.col !== col)) {
+                return;
+            }
+            
+            const canMove = piecesWithMoves.some(p => p.row === row && p.col === col);
+            if (!canMove) {
+                
+                return;
+            }
+            
+            selectedPiece = { row, col };
+           
+            renderBoard();
+            
+            const validMoves = getValidMoves(row, col);
+            showPossibleMoves(validMoves);
+        }
+        
+        // ПОКАЗАТЬ ВОЗМОЖНЫЕ ХОДЫ
+        function showPossibleMoves(moves) {
+            moves.forEach(move => {
+                // Находим ячейку по реальным координатам
+                const cell = document.querySelector(`.cell[data-row="${move.row}"][data-col="${move.col}"]`);
+                if (cell) {
+                    cell.classList.add('possible-move');
+                }
+            });
+        }
+        
+        // ОБРАБОТКА КЛИКА ПО КЛЕТКЕ
+        function handleCellClick(row, col) {
+            if (gameMode === 'online' && currentPlayer !== playerNumber) {
+               
+                return;
+            }
+            
+            if (!selectedPiece) return;
+            
+            const validMoves = getValidMoves(selectedPiece.row, selectedPiece.col);
+            const move = validMoves.find(m => m.row === row && m.col === col);
+            
+            if (move) {
+                // СНАЧАЛА ОБНОВЛЯЕМ ЛОКАЛЬНОЕ СОСТОЯНИЕ
+                makeMove(selectedPiece.row, selectedPiece.col, move);
+                
+                // ПОТОМ СОХРАНЯЕМ В FIREBASE (только для онлайн игры)
+                if (gameMode === 'online') {
+                    saveGameState();
+                }
+            } else {
+                if (!isMultipleJump) {
+                    selectedPiece = null;
+                    
+                    renderBoard();
+                }
+            }
+        }
+        
+        // ВЫПОЛНЕНИЕ ХОДА
+        function makeMove(fromRow, fromCol, move) {
+            const piece = board[fromRow][fromCol];
+            
+            board[move.row][move.col] = piece;
+            board[fromRow][fromCol] = null;
+            
+            if (move.captured) {
+                board[move.captured.row][move.captured.col] = null;
+            }
+            
+            if (!piece.isKing) {
+                if ((piece.player === 1 && move.row === 7) || (piece.player === 2 && move.row === 0)) {
+                    piece.isKing = true;
+                }
+            }
+            
+            if (move.captured) {
+                const nextMoves = getValidMoves(move.row, move.col);
+                const nextCaptureMoves = nextMoves.filter(m => m.captured);
+                
+                if (nextCaptureMoves.length > 0) {
+                    isMultipleJump = true;
+                    selectedPiece = { row: move.row, col: move.col };
+                    findMandatoryMoves();
+                    findPiecesWithMoves();
+                    renderBoard();
+                    return;
+                }
+            }
+            
+            isMultipleJump = false;
+            selectedPiece = null;
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
+            findMandatoryMoves();
+            findPiecesWithMoves();
+                // ДОБАВЬТЕ эту строку:
+    updateGameUI();
+            if (checkWinner()) {
+                return;
+            }
+            
+            // Обновляем интерфейс для локальной игры
+            if (gameMode === 'local') {
+                updateGameUI();
+            }
+            
+            renderBoard();
+        }
+        
+        // Вспомогательные функции
+        function generateGameId() {
+            return Math.random().toString(36).substring(2, 8).toUpperCase();
+        }
+        
+        function getPlayerName() {
+            return localStorage.getItem('login') || 'Анонимный игрок';
+        }
+
+
+
+
+        
+        // Инициализация страницы
+        showModeSelection();
+    </script>
+</body>
+</html>
