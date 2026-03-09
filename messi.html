@@ -1,0 +1,2013 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>Эфир · E2EE Мессенджер</title>
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        :root {
+            --bg-primary: #0b0b16;
+            --bg-secondary: #12121c;
+            --bg-tertiary: #1a1a2a;
+            --accent: #5d4ef0;
+            --accent-hover: #6f5ef5;
+            --danger: #f05e5e;
+            --danger-hover: #ff6b6b;
+            --success: #4ae9a0;
+            --warning: #ffaa00;
+            --text-primary: #f0f0fa;
+            --text-secondary: #b0b0da;
+            --text-muted: #7a7ab0;
+            --border: rgba(255, 255, 255, 0.08);
+            --sidebar-width: 320px;
+            --header-height: 70px;
+            --input-area-height: 80px;
+            --input-bottom-offset: 0px;
+            --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+            --message-own: #5d4ef0;
+            --message-other: #2a2a42;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0a14 0%, #131324 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        .app {
+            width: 100%;
+            height: 100vh;
+            background: var(--bg-primary);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), 0 0 0 1px var(--border);
+            display: flex;
+            overflow: hidden;
+            color: var(--text-primary);
+            position: relative;
+        }
+
+        /* Боковая панель */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+            z-index: 100;
+            height: 100%;
+        }
+
+        .sidebar-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .sidebar-header h2 {
+            font-size: clamp(1.2rem, 4vw, 1.5rem);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-primary);
+        }
+
+        .sidebar-header h2 i {
+            color: var(--accent);
+            background: rgba(93, 78, 240, 0.15);
+            padding: 10px;
+            border-radius: 16px;
+        }
+
+        .global-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+            padding: 10px 14px;
+            background: rgba(93, 78, 240, 0.1);
+            border-radius: 30px;
+            font-size: 0.9rem;
+            border: 1px solid rgba(93, 78, 240, 0.3);
+        }
+
+        .global-online {
+            color: var(--success);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .new-chat-btn {
+            width: 100%;
+            margin-top: 16px;
+            background: var(--accent);
+            border: none;
+            color: white;
+            padding: 14px;
+            border-radius: 28px;
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid #7f6eff;
+        }
+
+        .new-chat-btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(93, 78, 240, 0.3);
+        }
+
+        .new-chat-btn:active {
+            transform: translateY(0);
+        }
+
+        .join-panel {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .join-panel input {
+            width: 100%;
+            background: var(--bg-tertiary);
+            border: 1px solid rgba(123, 110, 246, 0.3);
+            border-radius: 28px;
+            padding: 14px 18px;
+            color: white;
+            font-size: 0.95rem;
+            margin-bottom: 10px;
+        }
+
+        .join-panel input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(93, 78, 240, 0.2);
+        }
+
+        .join-panel button {
+            width: 100%;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--accent);
+            color: white;
+            padding: 12px;
+            border-radius: 28px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .join-panel button:hover {
+            background: rgba(93, 78, 240, 0.2);
+        }
+
+        .rooms-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .room-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 20px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            position: relative;
+        }
+
+        .room-item:hover {
+            background: rgba(255, 255, 255, 0.03);
+            border-color: rgba(123, 110, 246, 0.3);
+        }
+
+        .room-item.active {
+            background: rgba(93, 78, 240, 0.15);
+            border-color: var(--accent);
+        }
+
+        .room-avatar {
+            width: 48px;
+            height: 48px;
+            min-width: 48px;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            transition: transform 0.2s;
+        }
+
+        .room-avatar:hover {
+            transform: scale(1.05);
+        }
+
+        .room-avatar[data-color="0"] { background: linear-gradient(135deg, #ff6b6b, #ff8c8c); }
+        .room-avatar[data-color="1"] { background: linear-gradient(135deg, #4ae9a0, #6bffb8); }
+        .room-avatar[data-color="2"] { background: linear-gradient(135deg, #5d4ef0, #7f6eff); }
+        .room-avatar[data-color="3"] { background: linear-gradient(135deg, #ffaa00, #ffc44d); }
+        .room-avatar[data-color="4"] { background: linear-gradient(135deg, #ff8c8c, #ffb5b5); }
+        .room-avatar[data-color="5"] { background: linear-gradient(135deg, #6b5bff, #9b8eff); }
+        .room-avatar[data-color="6"] { background: linear-gradient(135deg, #ff69b4, #ff9acb); }
+        .room-avatar[data-color="7"] { background: linear-gradient(135deg, #00d68f, #4dffb8); }
+        .room-avatar[data-color="8"] { background: linear-gradient(135deg, #ffb347, #ffd38c); }
+        .room-avatar[data-color="9"] { background: linear-gradient(135deg, #a35cff, #c08cff); }
+
+        .room-online-indicator {
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid var(--bg-secondary);
+            transition: background-color 0.1s ease, box-shadow 0.1s ease;
+        }
+
+        .room-online-indicator.online {
+            background: var(--success);
+            box-shadow: 0 0 10px var(--success);
+        }
+
+        .room-online-indicator.offline {
+            background: #f0a0a0;
+        }
+
+        .room-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .room-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .room-name span:first-child {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .room-time {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .room-last-message {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .pending-indicator {
+            color: var(--warning);
+            font-size: 0.8rem;
+        }
+
+        .room-actions {
+            display: flex;
+            gap: 4px;
+            opacity: 0.7;
+        }
+
+        .room-action-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            padding: 8px;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .room-action-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .room-action-btn.delete:hover {
+            color: var(--danger);
+        }
+
+        /* Основная область */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-primary);
+            min-width: 0;
+            position: relative;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            height: var(--header-height);
+            padding: 0 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(10, 10, 20, 0.6);
+            backdrop-filter: blur(10px);
+            gap: 16px;
+            flex-shrink: 0;
+        }
+
+        .chat-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 12px;
+        }
+
+        .menu-toggle:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .chat-header-info {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .chat-header-info h3 {
+            font-size: clamp(1rem, 4vw, 1.3rem);
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-header-info p {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            flex-wrap: wrap;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: color 0.1s ease;
+        }
+
+        .online { 
+            color: var(--success); 
+        }
+        .offline { 
+            color: #f0a0a0; 
+        }
+
+        .encryption-badge {
+            background: rgba(93, 78, 240, 0.15);
+            padding: 4px 10px;
+            border-radius: 30px;
+            font-size: 0.75rem;
+        }
+
+        .chat-header-key {
+            background: var(--bg-tertiary);
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            border: 1px solid rgba(123, 110, 246, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .chat-header-key:hover {
+            background: var(--bg-secondary);
+            border-color: var(--accent);
+        }
+
+        .chat-header-key:active {
+            transform: scale(0.98);
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 20px;
+        }
+
+        /* Стили сообщений - свои справа, чужие слева */
+        .message-wrapper {
+            width: 100%;
+            display: flex;
+            margin-bottom: 8px;
+        }
+
+        .message-wrapper.own {
+            justify-content: flex-end;
+        }
+
+        .message-wrapper.other {
+            justify-content: flex-start;
+        }
+
+        .message-content {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            max-width: 70%;
+        }
+
+        .message-wrapper.own .message-content {
+            flex-direction: row-reverse;
+        }
+
+        .message {
+            padding: 12px 16px;
+            border-radius: 24px;
+            word-break: break-word;
+            line-height: 1.5;
+            position: relative;
+            font-size: 1rem;
+        }
+
+        .message.own {
+            background: var(--message-own);
+            border-bottom-right-radius: 6px;
+            color: white;
+        }
+
+        .message.other {
+            background: var(--message-other);
+            border-bottom-left-radius: 6px;
+            border: 1px solid rgba(123, 110, 246, 0.2);
+        }
+
+        .message.pending {
+            opacity: 0.7;
+            border: 2px dashed var(--warning);
+        }
+
+        .message-time {
+            font-size: 0.65rem;
+            opacity: 0.6;
+            margin-top: 6px;
+            text-align: right;
+        }
+
+        /* Кнопка удаления */
+        .delete-message-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border);
+            color: var(--danger);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(5px);
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .delete-message-btn:hover {
+            background: var(--danger);
+            color: white;
+            border-color: var(--danger);
+            transform: scale(1.1);
+        }
+
+        .pending-icon {
+            color: var(--warning);
+            font-size: 0.7rem;
+            margin-left: 4px;
+        }
+
+        .pending-badge {
+            background: rgba(255, 170, 0, 0.2);
+            color: var(--warning);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 4px;
+        }
+
+        /* Область ввода */
+        .input-area {
+            height: var(--input-area-height);
+            padding: 12px 20px;
+            background: rgba(10, 10, 20, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-shrink: 0;
+            width: 100%;
+            position: relative;
+            z-index: 10;
+            margin-bottom: var(--input-bottom-offset);
+        }
+
+        .input-area input {
+            flex: 1;
+            height: 48px;
+            background: var(--bg-tertiary);
+            border: 1px solid rgba(123, 110, 246, 0.3);
+            border-radius: 30px;
+            padding: 0 20px;
+            font-size: 1rem;
+            color: white;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .input-area input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(93, 78, 240, 0.2);
+        }
+
+        .send-btn {
+            width: 48px;
+            height: 48px;
+            min-width: 48px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: none;
+            color: white;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 8px 20px rgba(93, 78, 240, 0.4);
+        }
+
+        .send-btn:active {
+            transform: scale(0.95);
+        }
+
+        .empty-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 20px;
+            height: 100%;
+        }
+
+        .empty-state i {
+            font-size: 5rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-tertiary);
+            border-left: 5px solid var(--accent);
+            padding: 12px 24px;
+            border-radius: 50px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            display: none;
+            white-space: nowrap;
+            max-width: 90%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: white;
+        }
+
+        .confirm-dialog {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            backdrop-filter: blur(5px);
+            animation: fadeIn 0.2s;
+        }
+
+        .confirm-content {
+            background: var(--bg-secondary);
+            padding: 28px;
+            border-radius: 32px;
+            max-width: 350px;
+            width: 90%;
+            text-align: center;
+            border: 1px solid var(--accent);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            animation: slideIn 0.2s;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .confirm-content h3 {
+            color: white;
+            font-size: 1.3rem;
+            margin-bottom: 12px;
+        }
+
+        .confirm-content p {
+            margin-bottom: 24px;
+            font-size: 1rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .confirm-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .confirm-btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 28px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .confirm-btn.yes {
+            background: var(--danger);
+            color: white;
+        }
+
+        .confirm-btn.yes:hover {
+            background: var(--danger-hover);
+            transform: translateY(-2px);
+        }
+
+        .confirm-btn.no {
+            background: var(--bg-tertiary);
+            color: white;
+            border: 1px solid var(--border);
+        }
+
+        .confirm-btn.no:hover {
+            background: #2a2a4a;
+        }
+
+        /* Десктоп - поле ввода внизу, приложение на весь экран */
+        @media (min-width: 769px) {
+            .input-area {
+                margin-bottom: 0;
+            }
+            
+            body {
+                padding: 0;
+            }
+            
+            .app {
+                width: 100%;
+                height: 100vh;
+                border-radius: 0;
+            }
+        }
+
+        /* Адаптивность для мобильных */
+        @media (max-width: 768px) {
+            :root {
+                --input-bottom-offset: 15vh;
+            }
+
+            body {
+                padding: 0;
+                overflow: hidden;
+                position: fixed;
+                width: 100%;
+                height: 100%;
+            }
+
+            .app {
+                height: 100vh;
+                max-height: 100vh;
+                border-radius: 0;
+                width: 100%;
+            }
+
+            .sidebar {
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 85%;
+                max-width: 320px;
+                transform: translateX(-100%);
+                background: var(--bg-secondary);
+                box-shadow: none;
+                z-index: 100;
+                height: 100vh;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+                box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            }
+
+            .menu-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .chat-header {
+                padding: 0 12px;
+                height: 60px;
+            }
+
+            .chat-header-left {
+                gap: 8px;
+            }
+
+            .chat-header-key {
+                display: none;
+            }
+
+            .chat-header-info p {
+                gap: 6px;
+                font-size: 0.75rem;
+            }
+
+            .message-content {
+                max-width: 85%;
+            }
+
+            .message {
+                font-size: 0.95rem;
+                padding: 10px 14px;
+            }
+
+            .room-actions {
+                opacity: 1;
+            }
+
+            .sidebar.open::before {
+                content: '';
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: -1;
+            }
+
+            .input-area {
+                padding: 10px 16px;
+            }
+
+            .input-area input {
+                height: 44px;
+                font-size: 0.95rem;
+            }
+
+            .send-btn {
+                width: 44px;
+                height: 44px;
+                min-width: 44px;
+                font-size: 1.2rem;
+            }
+
+            .messages-container {
+                padding: 12px;
+            }
+
+            .encryption-badge {
+                display: none;
+            }
+
+            .delete-message-btn {
+                width: 28px;
+                height: 28px;
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Маленькие телефоны */
+        @media (max-width: 480px) {
+            :root {
+                --input-bottom-offset: 12vh;
+            }
+
+            .room-avatar {
+                width: 40px;
+                height: 40px;
+                min-width: 40px;
+                font-size: 1.1rem;
+            }
+
+            .chat-header-info h3 {
+                font-size: 1rem;
+            }
+
+            .message-content {
+                max-width: 90%;
+            }
+
+            .message {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
+
+            .input-area {
+                padding: 8px 12px;
+            }
+
+            .input-area input {
+                height: 40px;
+                font-size: 0.9rem;
+            }
+
+            .send-btn {
+                width: 40px;
+                height: 40px;
+                min-width: 40px;
+                font-size: 1.1rem;
+            }
+
+            .confirm-content {
+                width: 95%;
+                padding: 20px;
+            }
+        }
+
+        /* Для планшетов */
+        @media (min-width: 481px) and (max-width: 1024px) {
+            :root {
+                --input-bottom-offset: 10vh;
+            }
+        }
+
+        /* Для устройств с безопасной зоной (iPhone) */
+        @supports (padding: max(0px)) {
+            .input-area {
+                margin-bottom: max(var(--input-bottom-offset), env(safe-area-inset-bottom));
+            }
+        }
+
+        /* Ландшафтная ориентация */
+        @media (max-height: 500px) and (orientation: landscape) {
+            :root {
+                --input-bottom-offset: 5vh;
+            }
+
+            .chat-header {
+                height: 50px;
+            }
+
+            .input-area {
+                padding: 6px 12px;
+            }
+
+            .input-area input {
+                height: 38px;
+            }
+
+            .send-btn {
+                width: 38px;
+                height: 38px;
+                min-width: 38px;
+                font-size: 1rem;
+            }
+
+            .messages-container {
+                padding: 8px;
+            }
+
+            .room-avatar {
+                width: 36px;
+                height: 36px;
+                min-width: 36px;
+                font-size: 1rem;
+            }
+
+            .message-content {
+                max-width: 75%;
+            }
+
+            .message {
+                padding: 6px 10px;
+                font-size: 0.85rem;
+            }
+        }
+
+        /* Touch-friendly */
+        @media (hover: none) and (pointer: coarse) {
+            .room-item, 
+            .new-chat-btn, 
+            .join-panel button,
+            .send-btn,
+            .chat-header-key,
+            .room-action-btn,
+            .menu-toggle,
+            .delete-message-btn {
+                cursor: default;
+                -webkit-tap-highlight-color: transparent;
+            }
+
+            input, button {
+                font-size: 16px !important;
+            }
+        }
+    </style>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+</head>
+<body>
+    <div class="app">
+        <!-- Боковая панель -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-lock"></i> Эфир</h2>
+                <div class="global-status" id="globalStatus">
+                    <span class="global-online" id="globalOnlineCount">
+                        <i class="fas fa-circle"></i> <span id="onlineCount">0</span> онлайн
+                    </span>
+                    <span id="totalUsers">всего: <span id="totalUsersCount">0</span></span>
+                </div>
+                <button class="new-chat-btn" id="newChatBtn">
+                    <i class="fas fa-plus"></i> Новый чат
+                </button>
+            </div>
+
+            <div class="join-panel">
+                <input type="text" id="joinKeyInput" placeholder="Вставить ключ комнаты...">
+                <button id="joinRoomBtn"><i class="fas fa-sign-in-alt"></i> Подключиться</button>
+            </div>
+
+            <div class="rooms-list" id="roomsList"></div>
+        </div>
+
+        <!-- Основная область -->
+        <div class="main">
+            <div class="chat-header" id="chatHeader" style="display: none;">
+                <div class="chat-header-left">
+                    <button class="menu-toggle" id="menuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="chat-header-info">
+                        <h3 id="currentRoomName">Выберите чат</h3>
+                        <p>
+                            <span id="peerStatus" class="status-badge offline">
+                                <i class="fas fa-circle"></i> не в сети
+                            </span>
+                            <span id="roomUsersCount" class="encryption-badge">
+                                <i class="fas fa-users"></i> <span id="roomOnlineCount">0</span> в сети
+                            </span>
+                            <span class="encryption-badge">
+                                <i class="fas fa-lock"></i> E2EE
+                            </span>
+                        </p>
+                    </div>
+                </div>
+                <div class="chat-header-key" id="roomKeyDisplay" title="Нажмите чтобы скопировать ключ">
+                    <span id="roomKeyShort"></span>
+                    <i class="fas fa-key" style="margin-left: 4px;"></i>
+                </div>
+            </div>
+
+            <div class="messages-container" id="messagesContainer">
+                <div class="empty-state" id="emptyState">
+                    <i class="fas fa-comments"></i>
+                    <h3>Выберите чат или создайте новый</h3>
+                    <p>Все сообщения защищены сквозным шифрованием</p>
+                </div>
+            </div>
+
+            <div class="input-area" id="inputArea" style="display: none;">
+                <input type="text" id="messageInput" placeholder="Введите сообщение..." autocomplete="off">
+                <button class="send-btn" id="sendMessageBtn">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="statusMessage"></div>
+
+    <script>
+        (function() {
+            // Firebase config
+            const firebaseConfig = {
+                apiKey: "AIzaSyAR21MKU5STNWCrU16Xs_mLY6niK86raM4",
+                authDomain: "messi-cfd69.firebaseapp.com",
+                databaseURL: "https://messi-cfd69-default-rtdb.firebaseio.com",
+                projectId: "messi-cfd69",
+                storageBucket: "messi-cfd69.firebasestorage.app",
+                messagingSenderId: "244516690744",
+                appId: "1:244516690744:web:d3d81fb91880036bf13fcd",
+                measurementId: "G-43FW2Z1EPR"
+            };
+
+            // Initialize Firebase
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.database();
+
+            // State
+            let rooms = new Map();
+            let currentRoomId = null;
+            let cryptoKey = null;
+            let messagesRef = null;
+            let peerPresenceRef = null;
+            let roomPresenceRef = null;
+            let currentMessagesListener = null;
+            let confirmDialog = null;
+            let connectedRef = null;
+            let globalPresenceRef = null;
+            let myGlobalPresenceRef = null;
+            let userId = generateUserId();
+            let pendingMessages = new Map();
+            
+            // Статус онлайн для каждой комнаты
+            let onlineStatusInRooms = new Map();
+
+            // DOM elements
+            const sidebar = document.getElementById('sidebar');
+            const menuToggle = document.getElementById('menuToggle');
+            const roomsListEl = document.getElementById('roomsList');
+            const chatHeader = document.getElementById('chatHeader');
+            const inputArea = document.getElementById('inputArea');
+            const messagesContainer = document.getElementById('messagesContainer');
+            const emptyState = document.getElementById('emptyState');
+            const messageInput = document.getElementById('messageInput');
+            const sendBtn = document.getElementById('sendMessageBtn');
+            const newChatBtn = document.getElementById('newChatBtn');
+            const joinRoomBtn = document.getElementById('joinRoomBtn');
+            const joinKeyInput = document.getElementById('joinKeyInput');
+            const currentRoomName = document.getElementById('currentRoomName');
+            const peerStatus = document.getElementById('peerStatus');
+            const roomKeyShort = document.getElementById('roomKeyShort');
+            const roomKeyDisplay = document.getElementById('roomKeyDisplay');
+            const statusMessage = document.getElementById('statusMessage');
+            const globalOnlineCount = document.getElementById('onlineCount');
+            const totalUsersCount = document.getElementById('totalUsersCount');
+            const roomOnlineCount = document.getElementById('roomOnlineCount');
+
+            // Generate unique user ID
+            function generateUserId() {
+                let userId = localStorage.getItem('userId');
+                if (!userId) {
+                    userId = 'user_' + Math.random().toString(36).substring(2, 15);
+                    localStorage.setItem('userId', userId);
+                }
+                return userId;
+            }
+
+            // Generate avatar color based on room name
+            function getAvatarColor(name) {
+                if (!name) return Math.floor(Math.random() * 10);
+                let hash = 0;
+                for (let i = 0; i < name.length; i++) {
+                    hash = ((hash << 5) - hash) + name.charCodeAt(i);
+                    hash = hash & hash;
+                }
+                return Math.abs(hash) % 10;
+            }
+
+            // Load pending messages from localStorage
+            function loadPendingMessages() {
+                const saved = localStorage.getItem('pending_messages');
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        pendingMessages = new Map(Object.entries(parsed));
+                    } catch (e) {
+                        console.error('Error loading pending messages:', e);
+                    }
+                }
+            }
+
+            // Save pending messages to localStorage
+            function savePendingMessages() {
+                try {
+                    const obj = Object.fromEntries(pendingMessages);
+                    localStorage.setItem('pending_messages', JSON.stringify(obj));
+                } catch (e) {
+                    console.error('Error saving pending messages:', e);
+                }
+            }
+
+            // Add pending message
+            function addPendingMessage(roomId, text, timestamp) {
+                if (!pendingMessages.has(roomId)) {
+                    pendingMessages.set(roomId, []);
+                }
+                pendingMessages.get(roomId).push({
+                    text,
+                    timestamp,
+                    id: 'pending_' + Date.now() + '_' + Math.random().toString(36)
+                });
+                savePendingMessages();
+                updateRoomPendingIndicator(roomId);
+            }
+
+            // Remove pending messages for a room
+            function removePendingMessages(roomId) {
+                pendingMessages.delete(roomId);
+                savePendingMessages();
+                updateRoomPendingIndicator(roomId);
+            }
+
+            // Update room pending indicator
+            function updateRoomPendingIndicator(roomId) {
+                const roomItem = document.querySelector(`.room-item[data-room-id="${roomId}"] .room-last-message`);
+                if (roomItem) {
+                    const pending = pendingMessages.get(roomId);
+                    if (pending && pending.length > 0) {
+                        let pendingSpan = roomItem.querySelector('.pending-indicator');
+                        if (!pendingSpan) {
+                            pendingSpan = document.createElement('span');
+                            pendingSpan.className = 'pending-indicator';
+                            roomItem.appendChild(pendingSpan);
+                        }
+                        pendingSpan.innerHTML = ` <i class="fas fa-clock" title="${pending.length} отложенных"></i>`;
+                    } else {
+                        const pendingSpan = roomItem.querySelector('.pending-indicator');
+                        if (pendingSpan) pendingSpan.remove();
+                    }
+                }
+            }
+
+            // Mobile menu toggle
+            menuToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('open');
+            });
+
+            // Close sidebar when clicking on room (mobile)
+            document.addEventListener('click', (e) => {
+                if (window.innerWidth <= 768) {
+                    if (e.target.closest('.room-item') && !e.target.closest('.room-action-btn')) {
+                        sidebar.classList.remove('open');
+                    }
+                }
+            });
+
+            // Show confirmation dialog
+            function showConfirm(title, message, onConfirm) {
+                if (confirmDialog) confirmDialog.remove();
+                
+                confirmDialog = document.createElement('div');
+                confirmDialog.className = 'confirm-dialog';
+                confirmDialog.innerHTML = `
+                    <div class="confirm-content">
+                        <h3>${title}</h3>
+                        <p>${message}</p>
+                        <div class="confirm-buttons">
+                            <button class="confirm-btn yes">Да, удалить</button>
+                            <button class="confirm-btn no">Отмена</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(confirmDialog);
+                
+                confirmDialog.querySelector('.yes').addEventListener('click', () => {
+                    onConfirm();
+                    confirmDialog.remove();
+                    confirmDialog = null;
+                });
+                
+                confirmDialog.querySelector('.no').addEventListener('click', () => {
+                    confirmDialog.remove();
+                    confirmDialog = null;
+                });
+            }
+
+            // Show status
+            function showStatus(text, isError = false) {
+                statusMessage.style.display = 'block';
+                statusMessage.textContent = text;
+                statusMessage.style.background = isError ? '#4a2a2a' : '#1a1a2e';
+                statusMessage.style.borderLeftColor = isError ? '#f05e5e' : '#5d4ef0';
+                setTimeout(() => {
+                    statusMessage.style.display = 'none';
+                }, 3000);
+            }
+
+            // Copy text to clipboard
+            async function copyToClipboard(text) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    showStatus('✅ Скопировано в буфер');
+                } catch (err) {
+                    // Fallback for mobile
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    showStatus('✅ Скопировано в буфер');
+                }
+            }
+
+            // Generate room ID
+            function generateRoomId() {
+                return Math.random().toString(36).substring(2, 8).toUpperCase();
+            }
+
+            // Crypto functions
+            async function generateCryptoKey() {
+                const key = await window.crypto.subtle.generateKey(
+                    { name: "AES-GCM", length: 256 },
+                    true,
+                    ["encrypt", "decrypt"]
+                );
+                const exported = await window.crypto.subtle.exportKey("raw", key);
+                const keyBase64 = btoa(String.fromCharCode(...new Uint8Array(exported)));
+                return { key, keyBase64 };
+            }
+
+            async function importKey(keyBase64) {
+                const binaryStr = atob(keyBase64);
+                const bytes = new Uint8Array(binaryStr.length);
+                for (let i = 0; i < binaryStr.length; i++) {
+                    bytes[i] = binaryStr.charCodeAt(i);
+                }
+                return await window.crypto.subtle.importKey(
+                    "raw",
+                    bytes,
+                    { name: "AES-GCM", length: 256 },
+                    true,
+                    ["encrypt", "decrypt"]
+                );
+            }
+
+            async function encryptMessage(text, key) {
+                const encoder = new TextEncoder();
+                const iv = window.crypto.getRandomValues(new Uint8Array(12));
+                const encoded = encoder.encode(text);
+                const ciphertext = await window.crypto.subtle.encrypt(
+                    { name: "AES-GCM", iv },
+                    key,
+                    encoded
+                );
+                const combined = new Uint8Array(iv.length + new Uint8Array(ciphertext).length);
+                combined.set(iv);
+                combined.set(new Uint8Array(ciphertext), iv.length);
+                return btoa(String.fromCharCode(...combined));
+            }
+
+            async function decryptMessage(encryptedBase64, key) {
+                try {
+                    const combined = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
+                    const iv = combined.slice(0, 12);
+                    const ciphertext = combined.slice(12);
+                    const decrypted = await window.crypto.subtle.decrypt(
+                        { name: "AES-GCM", iv },
+                        key,
+                        ciphertext
+                    );
+                    return new TextDecoder().decode(decrypted);
+                } catch (e) {
+                    return "🔐 Сообщение не может быть расшифровано";
+                }
+            }
+
+            // Save/load rooms
+            function saveRoom(roomId, keyBase64, name) {
+                const saved = JSON.parse(localStorage.getItem('e2ee_rooms') || '{}');
+                saved[roomId] = {
+                    keyBase64,
+                    name: name || `Комната ${roomId}`,
+                    lastAccessed: Date.now()
+                };
+                localStorage.setItem('e2ee_rooms', JSON.stringify(saved));
+            }
+
+            function loadSavedRooms() {
+                return JSON.parse(localStorage.getItem('e2ee_rooms') || '{}');
+            }
+
+            function deleteRoom(roomId) {
+                // Remove from Map
+                rooms.delete(roomId);
+                
+                // Remove from localStorage
+                const saved = loadSavedRooms();
+                delete saved[roomId];
+                localStorage.setItem('e2ee_rooms', JSON.stringify(saved));
+                
+                // Remove from UI
+                const roomEl = document.querySelector(`.room-item[data-room-id="${roomId}"]`);
+                if (roomEl) roomEl.remove();
+                
+                // Remove pending messages
+                pendingMessages.delete(roomId);
+                savePendingMessages();
+                
+                // If current room was deleted, switch to another room or show empty state
+                if (currentRoomId === roomId) {
+                    currentRoomId = null;
+                    cryptoKey = null;
+                    chatHeader.style.display = 'none';
+                    inputArea.style.display = 'none';
+                    emptyState.style.display = 'flex';
+                    messagesContainer.innerHTML = '<div class="empty-state" id="emptyState"><i class="fas fa-comments"></i><h3>Выберите чат или создайте новый</h3><p>Все сообщения защищены сквозным шифрованием</p></div>';
+                    
+                    // Clean up Firebase listeners
+                    if (messagesRef) messagesRef.off();
+                    if (peerPresenceRef) peerPresenceRef.off();
+                    if (roomPresenceRef) roomPresenceRef.off();
+                    if (currentMessagesListener) currentMessagesListener();
+                }
+                
+                showStatus('🗑️ Чат удален');
+            }
+
+            // Update room online status in UI
+            function updateRoomOnlineStatus(roomId, isOnline) {
+                const roomItem = document.querySelector(`.room-item[data-room-id="${roomId}"]`);
+                if (roomItem) {
+                    const avatar = roomItem.querySelector('.room-avatar');
+                    let indicator = avatar.querySelector('.room-online-indicator');
+                    
+                    if (!indicator) {
+                        indicator = document.createElement('span');
+                        indicator.className = 'room-online-indicator';
+                        avatar.appendChild(indicator);
+                    }
+                    
+                    indicator.className = `room-online-indicator ${isOnline ? 'online' : 'offline'}`;
+                    
+                    // Сохраняем статус
+                    onlineStatusInRooms.set(roomId, isOnline);
+                }
+            }
+
+            // Delete message
+            async function deleteMessage(messageId) {
+                if (!currentRoomId || !cryptoKey) return;
+                
+                try {
+                    // Mark message as deleted in Firebase
+                    const messageRef = db.ref(`rooms/${currentRoomId}/messages/${messageId}`);
+                    await messageRef.update({
+                        deleted: true,
+                        deletedBy: userId,
+                        deletedAt: Date.now()
+                    });
+                    
+                    showStatus('✅ Сообщение удалено');
+                } catch (error) {
+                    console.error('Error deleting message:', error);
+                    showStatus('Ошибка при удалении', true);
+                }
+            }
+
+            // Add room to UI
+            function addRoomToUI(roomId, keyBase64, name, lastMsg = '', lastTime = Date.now()) {
+                if (rooms.has(roomId)) return;
+                
+                rooms.set(roomId, { keyBase64, name });
+                
+                const roomEl = document.createElement('div');
+                roomEl.className = `room-item ${currentRoomId === roomId ? 'active' : ''}`;
+                roomEl.dataset.roomId = roomId;
+                
+                const avatarColor = getAvatarColor(name || roomId);
+                const pending = pendingMessages.get(roomId);
+                const pendingIndicator = pending && pending.length > 0 ? 
+                    `<span class="pending-indicator"><i class="fas fa-clock" title="${pending.length} отложенных"></i></span>` : '';
+                
+                roomEl.innerHTML = `
+                    <div class="room-avatar" data-color="${avatarColor}">
+                        ${(name || roomId)[0].toUpperCase()}
+                        <span class="room-online-indicator offline"></span>
+                    </div>
+                    <div class="room-info">
+                        <div class="room-name">
+                            <span>${name || 'Без названия'}</span>
+                            <span class="room-time">${new Date(lastTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        <div class="room-last-message">
+                            ${lastMsg || 'Нет сообщений'}
+                            ${pendingIndicator}
+                        </div>
+                    </div>
+                    <div class="room-actions">
+                        <button class="room-action-btn copy-key" title="Копировать ключ комнаты">
+                            <i class="fas fa-key"></i>
+                        </button>
+                        <button class="room-action-btn delete" title="Удалить чат">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                
+                // Room click (switch)
+                roomEl.addEventListener('click', (e) => {
+                    if (!e.target.closest('.room-action-btn')) {
+                        switchRoom(roomId);
+                    }
+                });
+                
+                // Copy key button
+                roomEl.querySelector('.copy-key').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    copyToClipboard(`${roomId}:${keyBase64}`);
+                });
+                
+                // Delete button
+                roomEl.querySelector('.delete').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showConfirm(
+                        'Удалить чат?',
+                        `Вы уверены, что хотите удалить чат "${name || roomId}"? Это действие нельзя отменить.`,
+                        () => {
+                            deleteRoom(roomId);
+                        }
+                    );
+                });
+                
+                roomsListEl.appendChild(roomEl);
+            }
+
+            // Switch room
+            async function switchRoom(roomId) {
+                const room = rooms.get(roomId);
+                if (!room) return;
+
+                // Clean up old listeners
+                if (messagesRef) messagesRef.off();
+                if (peerPresenceRef) peerPresenceRef.off();
+                if (roomPresenceRef) roomPresenceRef.off();
+                if (currentMessagesListener) currentMessagesListener();
+
+                currentRoomId = roomId;
+                cryptoKey = await importKey(room.keyBase64);
+
+                // Update UI
+                document.querySelectorAll('.room-item').forEach(el => {
+                    el.classList.toggle('active', el.dataset.roomId === roomId);
+                });
+
+                chatHeader.style.display = 'flex';
+                inputArea.style.display = 'flex';
+                emptyState.style.display = 'none';
+                currentRoomName.textContent = room.name || `Комната ${roomId}`;
+                roomKeyShort.textContent = `${roomId}:${room.keyBase64.substring(0, 6)}...`;
+
+                messagesContainer.innerHTML = '';
+                
+                // Load messages
+                try {
+                    await loadMessages(roomId, cryptoKey);
+                } catch (error) {
+                    console.error('Error loading messages:', error);
+                }
+                
+                // Setup real-time listeners
+                setupMessagesListener(roomId, cryptoKey);
+                setupRoomPresence(roomId);
+
+                // Update last accessed
+                const saved = loadSavedRooms();
+                if (saved[roomId]) {
+                    saved[roomId].lastAccessed = Date.now();
+                    localStorage.setItem('e2ee_rooms', JSON.stringify(saved));
+                }
+            }
+
+            // Load messages
+            async function loadMessages(roomId, key) {
+                try {
+                    const snapshot = await db.ref(`rooms/${roomId}/messages`).once('value');
+                    
+                    if (!snapshot || !snapshot.exists()) return;
+
+                    const messagesArray = [];
+                    snapshot.forEach((childSnapshot) => {
+                        const msg = childSnapshot.val();
+                        if (msg && msg.data) {
+                            messagesArray.push({
+                                id: childSnapshot.key,
+                                ...msg
+                            });
+                        }
+                    });
+                    
+                    messagesArray.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+
+                    for (const msg of messagesArray) {
+                        if (msg.deleted) {
+                            // Не показываем удаленные сообщения
+                            continue;
+                        } else {
+                            const decrypted = await decryptMessage(msg.data, key);
+                            const isOwn = msg.from === userId;
+                            addMessageToUI(decrypted, isOwn, msg.ts, false, msg.id);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error loading messages:', error);
+                }
+            }
+
+            // Setup real-time messages listener
+            function setupMessagesListener(roomId, key) {
+                messagesRef = db.ref(`rooms/${roomId}/messages`);
+                
+                if (currentMessagesListener) {
+                    messagesRef.off('child_added', currentMessagesListener);
+                }
+                
+                currentMessagesListener = messagesRef.on('child_added', async (snapshot) => {
+                    if (!snapshot || !snapshot.exists()) return;
+                    
+                    const msg = snapshot.val();
+                    if (!msg || !msg.data || msg.deleted) return;
+                    
+                    const isOwn = msg.from === userId;
+                    const decrypted = await decryptMessage(msg.data, key);
+                    
+                    const existingMessage = document.querySelector(`[data-message-id="${snapshot.key}"]`);
+                    if (!existingMessage) {
+                        addMessageToUI(decrypted, isOwn, msg.ts, false, snapshot.key);
+                    }
+                    
+                    // Update last message in room list
+                    const roomItem = document.querySelector(`.room-item[data-room-id="${roomId}"] .room-last-message`);
+                    const roomTime = document.querySelector(`.room-item[data-room-id="${roomId}"] .room-time`);
+                    if (roomItem) {
+                        roomItem.textContent = decrypted.substring(0, 30) + (decrypted.length > 30 ? '...' : '');
+                    }
+                    if (roomTime) {
+                        roomTime.textContent = new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    }
+                });
+                
+                messagesRef.on('child_changed', (snapshot) => {
+                    if (!snapshot || !snapshot.exists()) return;
+                    
+                    const msg = snapshot.val();
+                    if (msg && msg.deleted) {
+                        const messageElement = document.querySelector(`[data-message-id="${snapshot.key}"]`);
+                        if (messageElement) {
+                            messageElement.closest('.message-wrapper').remove();
+                        }
+                    }
+                });
+            }
+
+            // Add message to UI
+            function addMessageToUI(text, isOwn, timestamp, isPending = false, messageId = null) {
+                const wrapper = document.createElement('div');
+                wrapper.className = `message-wrapper ${isOwn ? 'own' : 'other'}`;
+                
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'message-content';
+                
+                const msgEl = document.createElement('div');
+                msgEl.className = `message ${isOwn ? 'own' : 'other'} ${isPending ? 'pending' : ''}`;
+                msgEl.textContent = text;
+                if (messageId) {
+                    msgEl.dataset.messageId = messageId;
+                }
+                
+                const timeEl = document.createElement('div');
+                timeEl.className = 'message-time';
+                
+                const timeText = new Date(timestamp).toLocaleTimeString([], { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    day: window.innerWidth > 480 ? 'numeric' : undefined,
+                    month: window.innerWidth > 480 ? 'numeric' : undefined
+                });
+                
+                timeEl.textContent = timeText;
+                
+                if (isPending) {
+                    const pendingIcon = document.createElement('span');
+                    pendingIcon.className = 'pending-icon';
+                    pendingIcon.innerHTML = ' <i class="fas fa-clock"></i>';
+                    timeEl.appendChild(pendingIcon);
+                }
+                
+                msgEl.appendChild(timeEl);
+                contentDiv.appendChild(msgEl);
+                
+                // Add delete button for own messages
+                if (isOwn && !isPending && messageId) {
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'delete-message-btn';
+                    deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                    deleteBtn.title = 'Удалить сообщение';
+                    
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showConfirm(
+                            'Удалить сообщение?',
+                            'Вы уверены, что хотите удалить это сообщение для всех?',
+                            () => deleteMessage(messageId)
+                        );
+                    });
+                    
+                    contentDiv.appendChild(deleteBtn);
+                }
+                
+                wrapper.appendChild(contentDiv);
+                
+                if (isPending) {
+                    const badge = document.createElement('div');
+                    badge.className = 'pending-badge';
+                    badge.innerHTML = '<i class="fas fa-hourglass-half"></i> Ожидает подключения собеседника';
+                    wrapper.appendChild(badge);
+                }
+                
+                messagesContainer.appendChild(wrapper);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+
+            // Send message with offline support
+            async function sendMessage(text) {
+                if (!currentRoomId || !cryptoKey || !text.trim()) return;
+
+                try {
+                    // Проверяем онлайн статус в текущей комнате
+                    const isOnlineInThisRoom = onlineStatusInRooms.get(currentRoomId) || false;
+                    
+                    if (isOnlineInThisRoom) {
+                        // Peer is online - send immediately
+                        const encrypted = await encryptMessage(text, cryptoKey);
+                        const messageObj = {
+                            data: encrypted,
+                            from: userId,
+                            ts: Date.now()
+                        };
+
+                        await db.ref(`rooms/${currentRoomId}/messages`).push(messageObj);
+                        showStatus('✅ Сообщение отправлено');
+                    } else {
+                        // Peer is offline - save as pending
+                        addPendingMessage(currentRoomId, text, Date.now());
+                        addMessageToUI(text, true, Date.now(), true);
+                        showStatus('⏳ Собеседник не в сети. Сообщение будет доставлено позже', false);
+                    }
+                    
+                    messageInput.value = '';
+                } catch (error) {
+                    console.error('Send error:', error);
+                    showStatus('Ошибка отправки', true);
+                }
+            }
+
+            // Try to send pending messages
+            async function trySendPendingMessages(roomId) {
+                const pending = pendingMessages.get(roomId);
+                if (!pending || pending.length === 0) return;
+                
+                // Проверяем онлайн статус
+                const isOnlineInThisRoom = onlineStatusInRooms.get(roomId) || false;
+                if (!isOnlineInThisRoom) return;
+
+                for (const msg of pending) {
+                    try {
+                        const encrypted = await encryptMessage(msg.text, cryptoKey);
+                        const messageObj = {
+                            data: encrypted,
+                            from: userId,
+                            ts: msg.timestamp
+                        };
+                        await db.ref(`rooms/${roomId}/messages`).push(messageObj);
+                    } catch (error) {
+                        console.error('Error sending pending message:', error);
+                    }
+                }
+                
+                // Clear pending messages for this room
+                removePendingMessages(roomId);
+                
+                // Reload messages to update UI
+                if (currentRoomId === roomId) {
+                    messagesContainer.innerHTML = '';
+                    await loadMessages(roomId, cryptoKey);
+                }
+                
+                showStatus('✅ Отложенные сообщения доставлены');
+            }
+
+            // Global presence setup
+            function setupGlobalPresence() {
+                myGlobalPresenceRef = db.ref(`presence/${userId}`);
+                globalPresenceRef = db.ref('presence');
+
+                // Listen to connection state
+                connectedRef = db.ref('.info/connected');
+                
+                connectedRef.on('value', (snap) => {
+                    if (snap && snap.val() === true) {
+                        // We're connected, set up presence
+                        myGlobalPresenceRef.onDisconnect().remove();
+                        myGlobalPresenceRef.set({
+                            online: true,
+                            lastSeen: Date.now(),
+                            currentRoom: currentRoomId || null
+                        }).catch(error => console.error('Error setting presence:', error));
+                    }
+                });
+
+                // Count total and online users with immediate updates
+                globalPresenceRef.on('value', (snapshot) => {
+                    if (snapshot && snapshot.exists()) {
+                        const users = snapshot.val() || {};
+                        const onlineUsers = Object.values(users).filter(u => u && u.online === true).length;
+                        const totalUsers = Object.keys(users).length;
+                        
+                        globalOnlineCount.textContent = onlineUsers;
+                        totalUsersCount.textContent = totalUsers;
+                    } else {
+                        globalOnlineCount.textContent = '0';
+                        totalUsersCount.textContent = '0';
+                    }
+                }, (error) => {
+                    console.error('Error in global presence:', error);
+                });
+            }
+
+            // Room presence setup with immediate updates
+            function setupRoomPresence(roomId) {
+                if (!roomId) return;
+                
+                try {
+                    const myRoomPresenceRef = db.ref(`rooms/${roomId}/presence/${userId}`);
+                    
+                    // Remove old presence listener if exists
+                    if (roomPresenceRef) {
+                        roomPresenceRef.off();
+                    }
+                    
+                    roomPresenceRef = db.ref(`rooms/${roomId}/presence`);
+
+                    // Set own presence immediately
+                    myRoomPresenceRef.set({
+                        online: true,
+                        lastSeen: Date.now()
+                    }).catch(error => console.error('Error setting room presence:', error));
+                    
+                    // Set onDisconnect
+                    myRoomPresenceRef.onDisconnect().remove();
+
+                    // Listen to other users in room with immediate updates
+                    roomPresenceRef.on('value', (snapshot) => {
+                        if (snapshot && snapshot.exists()) {
+                            const users = snapshot.val() || {};
+                            
+                            // Get all online users except self
+                            const onlineUsers = Object.entries(users)
+                                .filter(([id, data]) => id !== userId && data && data.online === true)
+                                .map(([id, data]) => ({ id, ...data }));
+                            
+                            const onlineCount = onlineUsers.length;
+                            
+                            // Обновляем статус для этой комнаты
+                            onlineStatusInRooms.set(roomId, onlineCount > 0);
+                            
+                            // Update UI immediately
+                            roomOnlineCount.textContent = onlineCount;
+                            
+                            // Update peer status immediately
+                            if (onlineCount > 0) {
+                                peerStatus.innerHTML = '<i class="fas fa-circle"></i> в сети';
+                                peerStatus.className = 'status-badge online';
+                                
+                                // If peer just came online, try to send pending messages
+                                trySendPendingMessages(roomId);
+                            } else {
+                                peerStatus.innerHTML = '<i class="fas fa-circle"></i> не в сети';
+                                peerStatus.className = 'status-badge offline';
+                            }
+                            
+                            // Update room online indicator
+                            updateRoomOnlineStatus(roomId, onlineCount > 0);
+                            
+                            // Update global presence with current room
+                            if (myGlobalPresenceRef) {
+                                myGlobalPresenceRef.update({ currentRoom: roomId })
+                                    .catch(error => console.error('Error updating global presence:', error));
+                            }
+                        } else {
+                            roomOnlineCount.textContent = '0';
+                            onlineStatusInRooms.set(roomId, false);
+                            peerStatus.innerHTML = '<i class="fas fa-circle"></i> не в сети';
+                            peerStatus.className = 'status-badge offline';
+                            updateRoomOnlineStatus(roomId, false);
+                        }
+                    }, (error) => {
+                        console.error('Error in room presence:', error);
+                    });
+                    
+                } catch (error) {
+                    console.error('Error setting up room presence:', error);
+                }
+            }
+
+            // Event: New chat
+            newChatBtn.addEventListener('click', async () => {
+                try {
+                    const roomId = generateRoomId();
+                    const { key, keyBase64 } = await generateCryptoKey();
+                    
+                    const roomName = prompt('Название комнаты (необязательно):', `Чат ${roomId}`);
+                    
+                    saveRoom(roomId, keyBase64, roomName || `Чат ${roomId}`);
+                    addRoomToUI(roomId, keyBase64, roomName || `Чат ${roomId}`, 'Создано', Date.now());
+                    
+                    await db.ref(`rooms/${roomId}/messages`).set({});
+                    await switchRoom(roomId);
+                    
+                    // Copy key to clipboard
+                    copyToClipboard(`${roomId}:${keyBase64}`);
+                } catch (error) {
+                    console.error('Create error:', error);
+                    showStatus('Ошибка создания', true);
+                }
+            });
+
+            // Event: Join room
+            joinRoomBtn.addEventListener('click', async () => {
+                const fullKey = joinKeyInput.value.trim();
+                if (!fullKey) {
+                    showStatus('Введите ключ', true);
+                    return;
+                }
+
+                const [roomId, keyBase64] = fullKey.split(':');
+                if (!roomId || !keyBase64) {
+                    showStatus('Неверный формат ключа', true);
+                    return;
+                }
+
+                try {
+                    await importKey(keyBase64);
+                    
+                    const roomName = prompt('Название комнаты (необязательно):', `Чат ${roomId}`);
+                    
+                    saveRoom(roomId, keyBase64, roomName || `Чат ${roomId}`);
+                    addRoomToUI(roomId, keyBase64, roomName || `Чат ${roomId}`, 'Подключено', Date.now());
+                    
+                    await switchRoom(roomId);
+                    joinKeyInput.value = '';
+                } catch (error) {
+                    console.error('Join error:', error);
+                    showStatus('Неверный ключ шифрования', true);
+                }
+            });
+
+            // Event: Send message
+            sendBtn.addEventListener('click', () => sendMessage(messageInput.value));
+            messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage(messageInput.value);
+            });
+
+            // Event: Copy full key (click on header key)
+            roomKeyDisplay.addEventListener('click', () => {
+                if (currentRoomId) {
+                    const room = rooms.get(currentRoomId);
+                    if (room) {
+                        copyToClipboard(`${currentRoomId}:${room.keyBase64}`);
+                    }
+                }
+            });
+
+            // Initialize
+            async function initialize() {
+                try {
+                    // Load all data
+                    loadPendingMessages();
+                    
+                    const savedRooms = loadSavedRooms();
+                    
+                    for (const [roomId, data] of Object.entries(savedRooms)) {
+                        addRoomToUI(roomId, data.keyBase64, data.name, 'Сохранено', data.lastAccessed);
+                    }
+                    
+                    if (Object.keys(savedRooms).length > 0) {
+                        const lastRoom = Object.entries(savedRooms)
+                            .sort((a, b) => b[1].lastAccessed - a[1].lastAccessed)[0];
+                        await switchRoom(lastRoom[0]);
+                    }
+                    
+                    // Setup global presence
+                    setupGlobalPresence();
+                } catch (error) {
+                    console.error('Error during initialization:', error);
+                }
+            }
+
+            initialize();
+
+            // Cleanup on unload
+            window.addEventListener('beforeunload', () => {
+                try {
+                    if (myGlobalPresenceRef) {
+                        myGlobalPresenceRef.remove();
+                    }
+                    if (currentRoomId) {
+                        db.ref(`rooms/${currentRoomId}/presence/${userId}`).remove();
+                    }
+                    if (connectedRef) connectedRef.off();
+                    if (globalPresenceRef) globalPresenceRef.off();
+                    if (roomPresenceRef) roomPresenceRef.off();
+                    if (messagesRef) messagesRef.off();
+                } catch (error) {
+                    console.error('Error during cleanup:', error);
+                }
+            });
+
+            // Handle resize
+            window.addEventListener('resize', () => {
+                if (window.innerWidth > 768) {
+                    sidebar.classList.remove('open');
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
