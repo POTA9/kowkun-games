@@ -71,6 +71,7 @@
             transition: transform 0.3s ease;
             z-index: 100;
             height: 100%;
+            will-change: transform;
         }
 
         .sidebar-header {
@@ -327,6 +328,26 @@
 
         .room-action-btn.delete:hover {
             color: var(--danger);
+        }
+
+        /* Затемнение фона при открытом меню */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 99;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            backdrop-filter: blur(2px);
+        }
+
+        .sidebar-overlay.active {
+            opacity: 1;
+            visibility: visible;
         }
 
         /* Основная область */
@@ -779,20 +800,23 @@
                 max-width: 320px;
                 transform: translateX(-100%);
                 background: var(--bg-secondary);
-                box-shadow: none;
+                box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
                 z-index: 100;
                 height: 100vh;
             }
 
             .sidebar.open {
                 transform: translateX(0);
-                box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
             }
 
             .menu-toggle {
                 display: flex;
                 align-items: center;
                 justify-content: center;
+            }
+
+            .sidebar-overlay {
+                display: block;
             }
 
             .chat-header {
@@ -824,17 +848,6 @@
 
             .room-actions {
                 opacity: 1;
-            }
-
-            .sidebar.open::before {
-                content: '';
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.5);
-                z-index: -1;
             }
 
             .input-area {
@@ -1001,6 +1014,9 @@
 </head>
 <body>
     <div class="app">
+        <!-- Затемнение фона при открытом меню -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+        
         <!-- Боковая панель -->
         <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
@@ -1107,8 +1123,14 @@
             // Статус онлайн для каждой комнаты
             let onlineStatusInRooms = new Map();
 
+            // Для отслеживания свайпа
+            let touchStartX = 0;
+            let touchEndX = 0;
+            const minSwipeDistance = 50; // Минимальное расстояние для свайпа
+
             // DOM elements
             const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
             const menuToggle = document.getElementById('menuToggle');
             const roomsListEl = document.getElementById('roomsList');
             const chatHeader = document.getElementById('chatHeader');
@@ -1128,6 +1150,81 @@
             const globalOnlineCount = document.getElementById('onlineCount');
             const totalUsersCount = document.getElementById('totalUsersCount');
             const roomOnlineCount = document.getElementById('roomOnlineCount');
+
+            // Функции для управления меню
+            function openSidebar() {
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.add('open');
+                    sidebarOverlay.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                }
+            }
+
+            function closeSidebar() {
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.remove('open');
+                    sidebarOverlay.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            }
+
+            function toggleSidebar() {
+                if (sidebar.classList.contains('open')) {
+                    closeSidebar();
+                } else {
+                    openSidebar();
+                }
+            }
+
+            // Обработчики свайпа
+            function handleTouchStart(e) {
+                touchStartX = e.touches[0].clientX;
+            }
+
+            function handleTouchMove(e) {
+                // Не делаем ничего, просто запоминаем конечную позицию
+                touchEndX = e.touches[0].clientX;
+            }
+
+            function handleTouchEnd(e) {
+                if (window.innerWidth > 768) return; // Только на мобильных
+                
+                const swipeDistance = touchEndX - touchStartX;
+                
+                // Свайп вправо для открытия
+                if (swipeDistance > minSwipeDistance && !sidebar.classList.contains('open')) {
+                    openSidebar();
+                }
+                
+                // Свайп влево для закрытия
+                if (swipeDistance < -minSwipeDistance && sidebar.classList.contains('open')) {
+                    closeSidebar();
+                }
+                
+                // Сброс значений
+                touchStartX = 0;
+                touchEndX = 0;
+            }
+
+            // Добавляем обработчики событий
+            document.addEventListener('touchstart', handleTouchStart, { passive: true });
+            document.addEventListener('touchmove', handleTouchMove, { passive: true });
+            document.addEventListener('touchend', handleTouchEnd);
+
+            // Mobile menu toggle
+            menuToggle.addEventListener('click', toggleSidebar);
+
+            // Закрыть меню при клике на оверлей
+            sidebarOverlay.addEventListener('click', closeSidebar);
+
+            // Закрыть меню при выборе чата (на мобильных)
+            document.addEventListener('click', (e) => {
+                if (window.innerWidth <= 768) {
+                    if (e.target.closest('.room-item') && !e.target.closest('.room-action-btn')) {
+                        closeSidebar();
+                    }
+                }
+            });
 
             // Generate unique user ID
             function generateUserId() {
@@ -1213,20 +1310,6 @@
                     }
                 }
             }
-
-            // Mobile menu toggle
-            menuToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('open');
-            });
-
-            // Close sidebar when clicking on room (mobile)
-            document.addEventListener('click', (e) => {
-                if (window.innerWidth <= 768) {
-                    if (e.target.closest('.room-item') && !e.target.closest('.room-action-btn')) {
-                        sidebar.classList.remove('open');
-                    }
-                }
-            });
 
             // Show confirmation dialog
             function showConfirm(title, message, onConfirm) {
@@ -1996,6 +2079,11 @@
                     if (globalPresenceRef) globalPresenceRef.off();
                     if (roomPresenceRef) roomPresenceRef.off();
                     if (messagesRef) messagesRef.off();
+                    
+                    // Удаляем обработчики свайпа
+                    document.removeEventListener('touchstart', handleTouchStart);
+                    document.removeEventListener('touchmove', handleTouchMove);
+                    document.removeEventListener('touchend', handleTouchEnd);
                 } catch (error) {
                     console.error('Error during cleanup:', error);
                 }
@@ -2004,7 +2092,7 @@
             // Handle resize
             window.addEventListener('resize', () => {
                 if (window.innerWidth > 768) {
-                    sidebar.classList.remove('open');
+                    closeSidebar();
                 }
             });
         })();
