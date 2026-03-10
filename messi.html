@@ -1375,6 +1375,111 @@
                 }
             }
 
+
+
+
+
+
+// ========== ФУНКЦИИ ДЛЯ ПОДСЧЕТА РАЗМЕРА ==========
+// Функция для подсчета размера сообщения в байтах
+function getMessageSizeInBytes(message) {
+    let totalBytes = 0;
+    
+    // Считаем размер data (зашифрованное сообщение в base64)
+    if (message.data) {
+        totalBytes += message.data.length * 1.37; // base64 коэффициент
+    }
+    
+    // Метаданные
+    if (message.from) totalBytes += message.from.length;
+    if (message.ts) totalBytes += 8; // timestamp число ~8 байт
+    if (message.delivered !== undefined) totalBytes += 1;
+    
+    return Math.ceil(totalBytes);
+}
+// ========== ГЛОБАЛЬНАЯ ОЧИСТКА ПО РАЗМЕРУ ==========
+// Глобальная очистка для ВСЕХ комнат (лимит 900 МБ)
+async function globalCleanupBySize(maxSizeMB = 900) {
+    try {
+        const maxSizeBytes = maxSizeMB * 1024 * 1024; // 900 МБ в байтах
+        console.log(`🔍 Запуск глобальной очистки... Лимит: ${maxSizeMB} МБ`);
+        
+        const roomsSnapshot = await db.ref('rooms').once('value');
+        
+        if (!roomsSnapshot.exists()) {
+            console.log('Нет комнат для очистки');
+            return;
+        }
+        
+        // Собираем ВСЕ сообщения из ВСЕХ комнат
+        const allMessages = [];
+        let totalSize = 0;
+        
+        roomsSnapshot.forEach((roomSnapshot) => {
+            const roomId = roomSnapshot.key;
+            const messagesSnapshot = roomSnapshot.child('messages');
+            
+            if (messagesSnapshot.exists()) {
+                messagesSnapshot.forEach((msgSnapshot) => {
+                    const msg = msgSnapshot.val();
+                    const size = getMessageSizeInBytes(msg);
+                    
+                    allMessages.push({
+                        key: msgSnapshot.key,
+                        roomId: roomId,
+                        timestamp: msg.ts || 0,
+                        size: size
+                    });
+                    
+                    totalSize += size;
+                });
+            }
+        });
+        
+        const totalSizeMB = (totalSize / 1024 / 1024).toFixed(2);
+        console.log(`📊 ВСЕГО: ${allMessages.length} сообщений, ${totalSizeMB} МБ`);
+        
+        // Если превышен глобальный лимит
+        if (totalSize > maxSizeBytes) {
+            // Сортируем ВСЕ сообщения по времени (от старых к новым)
+            allMessages.sort((a, b) => a.timestamp - b.timestamp);
+            
+            const updates = {};
+            let sizeToRemove = totalSize - maxSizeBytes;
+            let removedSize = 0;
+            let removedCount = 0;
+            
+            console.log(`⚠️ Превышение на ${(sizeToRemove/1024/1024).toFixed(2)} МБ. Удаляем старые сообщения...`);
+            
+            // Удаляем самые старые сообщения из любых комнат
+            for (const msg of allMessages) {
+                if (removedSize >= sizeToRemove) break;
+                
+                updates[`rooms/${msg.roomId}/messages/${msg.key}`] = null;
+                removedSize += msg.size;
+                removedCount++;
+            }
+            
+            if (removedCount > 0) {
+                await db.ref().update(updates);
+                const removedSizeMB = (removedSize/1024/1024).toFixed(2);
+                const newTotalMB = ((totalSize - removedSize)/1024/1024).toFixed(2);
+                
+                console.log(`🧹 Глобальная очистка: удалено ${removedCount} старых сообщений (${removedSizeMB} МБ)`);
+                console.log(`📈 Теперь всего: ${newTotalMB} МБ`);
+                
+                // Показываем уведомление пользователю
+                if (typeof showStatus === 'function') {
+                    showStatus(`🧹 База данных: ${totalSizeMB} МБ, очищено ${removedCount} сообщений`);
+                }
+            }
+        } else {
+            console.log(`✅ Лимит не превышен. Использовано: ${totalSizeMB} МБ из ${maxSizeMB} МБ`);
+        }
+    } catch (error) {
+        console.error('Ошибка глобальной очистки:', error);
+    }
+}
             // Save/load rooms
             function saveRoom(roomId, keyBase64, name) {
                 const saved = JSON.parse(localStorage.getItem('e2ee_rooms') || '{}');
@@ -1985,28 +2090,52 @@
                 }
             });
 
-            // Initialize
-            async function initialize() {
-                try {
-                    const savedRooms = loadSavedRooms();
-                    
-                    for (const [roomId, data] of Object.entries(savedRooms)) {
-                        addRoomToUI(roomId, data.keyBase64, data.name, 'Сохранено', data.lastAccessed);
-                    }
-                    
-                    if (Object.keys(savedRooms).length > 0) {
-                        const lastRoom = Object.entries(savedRooms)
-                            .sort((a, b) => b[1].lastAccessed - a[1].lastAccessed)[0];
-                        await switchRoom(lastRoom[0]);
-                    }
-                    
-                    // Setup global presence
-                    setupGlobalPresence();
-                } catch (error) {
-                    console.error('Error during initialization:', error);
-                }
-            }
 
+// ИНИЦИАЛИЗАЦИЯ С ГЛОБАЛЬНОЙ ОЧИСТКОЙ (БЕЗ loadPendingMessages)
+async function initialize() {
+    try {
+        // Загружаем сохраненные комнаты
+        const savedRooms = loadSavedRooms();
+        
+        // Добавляем комнаты в интерфейс
+        for (const [roomId, data] of Object.entries(savedRooms)) {
+            addRoomToUI(roomId, data.keyBase64, data.name, 'Сохранено', data.lastAccessed);
+        }
+        
+        // Переключаемся на последнюю использованную комнату
+        if (Object.keys(savedRooms).length > 0) {
+            const lastRoom = Object.entries(savedRooms)
+                .sort((a, b) => b[1].lastAccessed - a[1].lastAccessed)[0];
+            await switchRoom(lastRoom[0]);
+        }
+        
+        // ========== ГЛОБАЛЬНАЯ ОЧИСТКА ПРИ ЗАПУСКЕ ==========
+        // Проверяем, когда была последняя очистка
+        const lastGlobalCleanup = localStorage.getItem('global_cleanup_900mb');
+        const now = Date.now();
+        
+        // Очищаем если:
+        // 1. Никогда не было очистки
+        // 2. Прошло больше 24 часов с последней очистки
+        if (!lastGlobalCleanup || now - parseInt(lastGlobalCleanup) > 86400000) { // 24 часа
+            console.log('🕐 Запуск плановой глобальной очистки (раз в 24 часа)');
+            await globalCleanupBySize(900); // 900 МБ лимит
+            localStorage.setItem('global_cleanup_900mb', now.toString());
+        } else {
+            const hoursLeft = Math.round((86400000 - (now - parseInt(lastGlobalCleanup))) / 3600000);
+            console.log(`⏳ Следующая очистка через ${hoursLeft} часов`);
+        }
+        // ===================================================
+        
+        // Setup global presence
+        if (typeof setupGlobalPresence === 'function') {
+            setupGlobalPresence();
+        }
+        
+    } catch (error) {
+        console.error('Error during initialization:', error);
+    }
+}
             initialize();
 
             // Cleanup on unload
