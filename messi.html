@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <title>Эфир · E2EE Мессенджер</title>
     <!-- Font Awesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -72,6 +72,7 @@
             z-index: 100;
             height: 100%;
             will-change: transform;
+            position: relative;
         }
 
         .sidebar-header {
@@ -299,9 +300,19 @@
             gap: 4px;
         }
 
-        .pending-indicator {
+        .delivery-status {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 4px;
+            font-size: 0.7rem;
+        }
+
+        .delivered {
+            color: var(--success);
+        }
+
+        .pending {
             color: var(--warning);
-            font-size: 0.8rem;
         }
 
         .room-actions {
@@ -343,11 +354,13 @@
             visibility: hidden;
             transition: opacity 0.3s ease, visibility 0.3s ease;
             backdrop-filter: blur(2px);
+            pointer-events: none;
         }
 
         .sidebar-overlay.active {
             opacity: 1;
             visibility: visible;
+            pointer-events: auto;
         }
 
         /* Основная область */
@@ -524,16 +537,15 @@
             border: 1px solid rgba(123, 110, 246, 0.2);
         }
 
-        .message.pending {
-            opacity: 0.7;
-            border: 2px dashed var(--warning);
-        }
-
         .message-time {
             font-size: 0.65rem;
             opacity: 0.6;
             margin-top: 6px;
             text-align: right;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 4px;
         }
 
         /* Кнопка удаления */
@@ -561,25 +573,21 @@
             transform: scale(1.1);
         }
 
-        .pending-icon {
-            color: var(--warning);
+        .delivery-status-badge {
+            display: inline-flex;
+            align-items: center;
             font-size: 0.7rem;
             margin-left: 4px;
         }
 
-        .pending-badge {
-            background: rgba(255, 170, 0, 0.2);
-            color: var(--warning);
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.7rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            margin-top: 4px;
+        .delivered {
+            color: var(--success);
         }
 
-        /* Область ввода */
+        .pending {
+            color: var(--warning);
+        }
+
         .input-area {
             height: var(--input-area-height);
             padding: 12px 20px;
@@ -802,7 +810,8 @@
                 background: var(--bg-secondary);
                 box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
                 z-index: 100;
-                height: 100vh;
+                height: 100%;
+                transition: transform 0.3s ease;
             }
 
             .sidebar.open {
@@ -1118,15 +1127,14 @@
             let globalPresenceRef = null;
             let myGlobalPresenceRef = null;
             let userId = generateUserId();
-            let pendingMessages = new Map();
             
             // Статус онлайн для каждой комнаты
             let onlineStatusInRooms = new Map();
 
-            // Для отслеживания свайпа
+            // ПРОСТЫЕ переменные для свайпа
             let touchStartX = 0;
             let touchEndX = 0;
-            const minSwipeDistance = 50; // Минимальное расстояние для свайпа
+            const minSwipeDistance = 50;
 
             // DOM elements
             const sidebar = document.getElementById('sidebar');
@@ -1176,13 +1184,12 @@
                 }
             }
 
-            // Обработчики свайпа
+            // ПРОСТЫЕ И РАБОЧИЕ обработчики свайпа
             function handleTouchStart(e) {
                 touchStartX = e.touches[0].clientX;
             }
 
             function handleTouchMove(e) {
-                // Не делаем ничего, просто запоминаем конечную позицию
                 touchEndX = e.touches[0].clientX;
             }
 
@@ -1201,7 +1208,6 @@
                     closeSidebar();
                 }
                 
-                // Сброс значений
                 touchStartX = 0;
                 touchEndX = 0;
             }
@@ -1245,70 +1251,6 @@
                     hash = hash & hash;
                 }
                 return Math.abs(hash) % 10;
-            }
-
-            // Load pending messages from localStorage
-            function loadPendingMessages() {
-                const saved = localStorage.getItem('pending_messages');
-                if (saved) {
-                    try {
-                        const parsed = JSON.parse(saved);
-                        pendingMessages = new Map(Object.entries(parsed));
-                    } catch (e) {
-                        console.error('Error loading pending messages:', e);
-                    }
-                }
-            }
-
-            // Save pending messages to localStorage
-            function savePendingMessages() {
-                try {
-                    const obj = Object.fromEntries(pendingMessages);
-                    localStorage.setItem('pending_messages', JSON.stringify(obj));
-                } catch (e) {
-                    console.error('Error saving pending messages:', e);
-                }
-            }
-
-            // Add pending message
-            function addPendingMessage(roomId, text, timestamp) {
-                if (!pendingMessages.has(roomId)) {
-                    pendingMessages.set(roomId, []);
-                }
-                pendingMessages.get(roomId).push({
-                    text,
-                    timestamp,
-                    id: 'pending_' + Date.now() + '_' + Math.random().toString(36)
-                });
-                savePendingMessages();
-                updateRoomPendingIndicator(roomId);
-            }
-
-            // Remove pending messages for a room
-            function removePendingMessages(roomId) {
-                pendingMessages.delete(roomId);
-                savePendingMessages();
-                updateRoomPendingIndicator(roomId);
-            }
-
-            // Update room pending indicator
-            function updateRoomPendingIndicator(roomId) {
-                const roomItem = document.querySelector(`.room-item[data-room-id="${roomId}"] .room-last-message`);
-                if (roomItem) {
-                    const pending = pendingMessages.get(roomId);
-                    if (pending && pending.length > 0) {
-                        let pendingSpan = roomItem.querySelector('.pending-indicator');
-                        if (!pendingSpan) {
-                            pendingSpan = document.createElement('span');
-                            pendingSpan.className = 'pending-indicator';
-                            roomItem.appendChild(pendingSpan);
-                        }
-                        pendingSpan.innerHTML = ` <i class="fas fa-clock" title="${pending.length} отложенных"></i>`;
-                    } else {
-                        const pendingSpan = roomItem.querySelector('.pending-indicator');
-                        if (pendingSpan) pendingSpan.remove();
-                    }
-                }
             }
 
             // Show confirmation dialog
@@ -1461,10 +1403,6 @@
                 const roomEl = document.querySelector(`.room-item[data-room-id="${roomId}"]`);
                 if (roomEl) roomEl.remove();
                 
-                // Remove pending messages
-                pendingMessages.delete(roomId);
-                savePendingMessages();
-                
                 // If current room was deleted, switch to another room or show empty state
                 if (currentRoomId === roomId) {
                     currentRoomId = null;
@@ -1504,6 +1442,39 @@
                 }
             }
 
+            // Функция для пометки сообщений как доставленных
+            async function markMessagesAsDelivered(roomId) {
+                if (!roomId) return;
+                
+                try {
+                    // Получаем все сообщения в комнате
+                    const snapshot = await db.ref(`rooms/${roomId}/messages`).once('value');
+                    
+                    if (snapshot.exists()) {
+                        const updates = {};
+                        let hasUpdates = false;
+                        
+                        snapshot.forEach((childSnapshot) => {
+                            const msg = childSnapshot.val();
+                            // Помечаем как доставленные, если:
+                            // 1. Сообщение не от текущего пользователя (чужие сообщения)
+                            // 2. Статус delivered не true
+                            if (msg.from !== userId && msg.delivered !== true) {
+                                updates[`rooms/${roomId}/messages/${childSnapshot.key}/delivered`] = true;
+                                hasUpdates = true;
+                            }
+                        });
+                        
+                        if (hasUpdates) {
+                            await db.ref().update(updates);
+                            console.log(`Помечены как доставленные ${Object.keys(updates).length} сообщений в комнате ${roomId}`);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error marking messages as delivered:', error);
+                }
+            }
+
             // Delete message
             async function deleteMessage(messageId) {
                 if (!currentRoomId || !cryptoKey) return;
@@ -1535,9 +1506,6 @@
                 roomEl.dataset.roomId = roomId;
                 
                 const avatarColor = getAvatarColor(name || roomId);
-                const pending = pendingMessages.get(roomId);
-                const pendingIndicator = pending && pending.length > 0 ? 
-                    `<span class="pending-indicator"><i class="fas fa-clock" title="${pending.length} отложенных"></i></span>` : '';
                 
                 roomEl.innerHTML = `
                     <div class="room-avatar" data-color="${avatarColor}">
@@ -1551,7 +1519,6 @@
                         </div>
                         <div class="room-last-message">
                             ${lastMsg || 'Нет сообщений'}
-                            ${pendingIndicator}
                         </div>
                     </div>
                     <div class="room-actions">
@@ -1665,7 +1632,8 @@
                         } else {
                             const decrypted = await decryptMessage(msg.data, key);
                             const isOwn = msg.from === userId;
-                            addMessageToUI(decrypted, isOwn, msg.ts, false, msg.id);
+                            // Передаем статус delivered из Firebase
+                            addMessageToUI(decrypted, isOwn, msg.ts, msg.delivered || false, msg.id);
                         }
                     }
                 } catch (error) {
@@ -1692,7 +1660,8 @@
                     
                     const existingMessage = document.querySelector(`[data-message-id="${snapshot.key}"]`);
                     if (!existingMessage) {
-                        addMessageToUI(decrypted, isOwn, msg.ts, false, snapshot.key);
+                        // Передаем статус delivered из Firebase
+                        addMessageToUI(decrypted, isOwn, msg.ts, msg.delivered || false, snapshot.key);
                     }
                     
                     // Update last message in room list
@@ -1716,11 +1685,19 @@
                             messageElement.closest('.message-wrapper').remove();
                         }
                     }
+                    
+                    // Обновляем статус доставки если изменился
+                    if (msg && msg.delivered === true) {
+                        const messageElement = document.querySelector(`[data-message-id="${snapshot.key}"] .delivery-status-badge`);
+                        if (messageElement) {
+                            messageElement.innerHTML = ' <i class="fas fa-check-circle delivered" title="Доставлено"></i>';
+                        }
+                    }
                 });
             }
 
             // Add message to UI
-            function addMessageToUI(text, isOwn, timestamp, isPending = false, messageId = null) {
+            function addMessageToUI(text, isOwn, timestamp, isDelivered = false, messageId = null) {
                 const wrapper = document.createElement('div');
                 wrapper.className = `message-wrapper ${isOwn ? 'own' : 'other'}`;
                 
@@ -1728,7 +1705,7 @@
                 contentDiv.className = 'message-content';
                 
                 const msgEl = document.createElement('div');
-                msgEl.className = `message ${isOwn ? 'own' : 'other'} ${isPending ? 'pending' : ''}`;
+                msgEl.className = `message ${isOwn ? 'own' : 'other'}`;
                 msgEl.textContent = text;
                 if (messageId) {
                     msgEl.dataset.messageId = messageId;
@@ -1746,18 +1723,25 @@
                 
                 timeEl.textContent = timeText;
                 
-                if (isPending) {
-                    const pendingIcon = document.createElement('span');
-                    pendingIcon.className = 'pending-icon';
-                    pendingIcon.innerHTML = ' <i class="fas fa-clock"></i>';
-                    timeEl.appendChild(pendingIcon);
+                // Добавляем индикатор статуса доставки только для своих сообщений
+                if (isOwn) {
+                    const statusSpan = document.createElement('span');
+                    statusSpan.className = 'delivery-status-badge';
+                    
+                    if (isDelivered) {
+                        statusSpan.innerHTML = ' <i class="fas fa-check-circle delivered" title="Доставлено"></i>';
+                    } else {
+                        statusSpan.innerHTML = ' <i class="fas fa-clock pending" title="Ожидает доставки"></i>';
+                    }
+                    
+                    timeEl.appendChild(statusSpan);
                 }
                 
                 msgEl.appendChild(timeEl);
                 contentDiv.appendChild(msgEl);
                 
                 // Add delete button for own messages
-                if (isOwn && !isPending && messageId) {
+                if (isOwn && messageId) {
                     const deleteBtn = document.createElement('button');
                     deleteBtn.className = 'delete-message-btn';
                     deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
@@ -1777,41 +1761,33 @@
                 
                 wrapper.appendChild(contentDiv);
                 
-                if (isPending) {
-                    const badge = document.createElement('div');
-                    badge.className = 'pending-badge';
-                    badge.innerHTML = '<i class="fas fa-hourglass-half"></i> Ожидает подключения собеседника';
-                    wrapper.appendChild(badge);
-                }
-                
                 messagesContainer.appendChild(wrapper);
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }
 
-            // Send message with offline support
+            // Функция отправки сообщения с полем delivered
             async function sendMessage(text) {
                 if (!currentRoomId || !cryptoKey || !text.trim()) return;
 
                 try {
-                    // Проверяем онлайн статус в текущей комнате
-                    const isOnlineInThisRoom = onlineStatusInRooms.get(currentRoomId) || false;
+                    const encrypted = await encryptMessage(text, cryptoKey);
                     
-                    if (isOnlineInThisRoom) {
-                        // Peer is online - send immediately
-                        const encrypted = await encryptMessage(text, cryptoKey);
-                        const messageObj = {
-                            data: encrypted,
-                            from: userId,
-                            ts: Date.now()
-                        };
+                    // Проверяем, есть ли кто-то онлайн в комнате (кроме себя)
+                    const hasOtherOnline = onlineStatusInRooms.get(currentRoomId) || false;
+                    
+                    const messageObj = {
+                        data: encrypted,
+                        from: userId,
+                        ts: Date.now(),
+                        delivered: hasOtherOnline // Если есть другие онлайн, считаем доставленным
+                    };
 
-                        await db.ref(`rooms/${currentRoomId}/messages`).push(messageObj);
+                    await db.ref(`rooms/${currentRoomId}/messages`).push(messageObj);
+                    
+                    if (navigator.onLine) {
                         showStatus('✅ Сообщение отправлено');
                     } else {
-                        // Peer is offline - save as pending
-                        addPendingMessage(currentRoomId, text, Date.now());
-                        addMessageToUI(text, true, Date.now(), true);
-                        showStatus('⏳ Собеседник не в сети. Сообщение будет доставлено позже', false);
+                        showStatus('📦 Сообщение сохранено и будет доставлено при подключении');
                     }
                     
                     messageInput.value = '';
@@ -1819,41 +1795,6 @@
                     console.error('Send error:', error);
                     showStatus('Ошибка отправки', true);
                 }
-            }
-
-            // Try to send pending messages
-            async function trySendPendingMessages(roomId) {
-                const pending = pendingMessages.get(roomId);
-                if (!pending || pending.length === 0) return;
-                
-                // Проверяем онлайн статус
-                const isOnlineInThisRoom = onlineStatusInRooms.get(roomId) || false;
-                if (!isOnlineInThisRoom) return;
-
-                for (const msg of pending) {
-                    try {
-                        const encrypted = await encryptMessage(msg.text, cryptoKey);
-                        const messageObj = {
-                            data: encrypted,
-                            from: userId,
-                            ts: msg.timestamp
-                        };
-                        await db.ref(`rooms/${roomId}/messages`).push(messageObj);
-                    } catch (error) {
-                        console.error('Error sending pending message:', error);
-                    }
-                }
-                
-                // Clear pending messages for this room
-                removePendingMessages(roomId);
-                
-                // Reload messages to update UI
-                if (currentRoomId === roomId) {
-                    messagesContainer.innerHTML = '';
-                    await loadMessages(roomId, cryptoKey);
-                }
-                
-                showStatus('✅ Отложенные сообщения доставлены');
             }
 
             // Global presence setup
@@ -1928,9 +1869,17 @@
                                 .map(([id, data]) => ({ id, ...data }));
                             
                             const onlineCount = onlineUsers.length;
+                            const wasOnline = onlineStatusInRooms.get(roomId) || false;
                             
                             // Обновляем статус для этой комнаты
                             onlineStatusInRooms.set(roomId, onlineCount > 0);
+                            
+                            // ВАЖНО: Если появились онлайн пользователи (было 0, стало >0)
+                            // помечаем ВСЕ старые сообщения как доставленные
+                            if (!wasOnline && onlineCount > 0) {
+                                console.log('Пользователь зашел онлайн, помечаем сообщения как доставленные');
+                                markMessagesAsDelivered(roomId);
+                            }
                             
                             // Update UI immediately
                             roomOnlineCount.textContent = onlineCount;
@@ -1939,9 +1888,6 @@
                             if (onlineCount > 0) {
                                 peerStatus.innerHTML = '<i class="fas fa-circle"></i> в сети';
                                 peerStatus.className = 'status-badge online';
-                                
-                                // If peer just came online, try to send pending messages
-                                trySendPendingMessages(roomId);
                             } else {
                                 peerStatus.innerHTML = '<i class="fas fa-circle"></i> не в сети';
                                 peerStatus.className = 'status-badge offline';
@@ -2042,9 +1988,6 @@
             // Initialize
             async function initialize() {
                 try {
-                    // Load all data
-                    loadPendingMessages();
-                    
                     const savedRooms = loadSavedRooms();
                     
                     for (const [roomId, data] of Object.entries(savedRooms)) {
