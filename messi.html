@@ -1496,6 +1496,13 @@ async function globalCleanupBySize(maxSizeMB = 900) {
             }
 
             function deleteRoom(roomId) {
+
+
+
+                  if (roomId) {
+        db.ref(`rooms/${roomId}/presence/${userId}`).remove()
+            .catch(error => console.error('Error removing presence on room delete:', error));
+    }
                 // Remove from Map
                 rooms.delete(roomId);
                 
@@ -1547,38 +1554,50 @@ async function globalCleanupBySize(maxSizeMB = 900) {
                 }
             }
 
-            // Функция для пометки сообщений как доставленных
-            async function markMessagesAsDelivered(roomId) {
-                if (!roomId) return;
-                
-                try {
-                    // Получаем все сообщения в комнате
-                    const snapshot = await db.ref(`rooms/${roomId}/messages`).once('value');
-                    
-                    if (snapshot.exists()) {
-                        const updates = {};
-                        let hasUpdates = false;
-                        
-                        snapshot.forEach((childSnapshot) => {
-                            const msg = childSnapshot.val();
-                            // Помечаем как доставленные, если:
-                            // 1. Сообщение не от текущего пользователя (чужие сообщения)
-                            // 2. Статус delivered не true
-                            if (msg.from !== userId && msg.delivered !== true) {
-                                updates[`rooms/${roomId}/messages/${childSnapshot.key}/delivered`] = true;
-                                hasUpdates = true;
-                            }
-                        });
-                        
-                        if (hasUpdates) {
-                            await db.ref().update(updates);
-                            console.log(`Помечены как доставленные ${Object.keys(updates).length} сообщений в комнате ${roomId}`);
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error marking messages as delivered:', error);
+// Функция для пометки сообщений как доставленных
+async function markMessagesAsDelivered(roomId) {
+    if (!roomId) return;
+    
+    try {
+        console.log(`🔍 Проверка сообщений для доставки в комнате ${roomId}`);
+        
+        // Получаем все сообщения в комнате
+        const snapshot = await db.ref(`rooms/${roomId}/messages`).once('value');
+        
+        if (snapshot.exists()) {
+            const updates = {};
+            let hasUpdates = false;
+            let markedCount = 0;
+            
+            snapshot.forEach((childSnapshot) => {
+                const msg = childSnapshot.val();
+                // Помечаем как доставленные ВСЕ непрочитанные сообщения, КРОМЕ:
+                // 1. Уже доставленных
+                // 2. Удаленных
+                // 3. Сообщений от текущего пользователя (их не нужно помечать как доставленные для него самого)
+                if (msg.delivered !== true && !msg.deleted) {
+                    updates[`rooms/${roomId}/messages/${childSnapshot.key}/delivered`] = true;
+                    hasUpdates = true;
+                    markedCount++;
                 }
+            });
+            
+            if (hasUpdates) {
+                await db.ref().update(updates);
+                console.log(`✅ Помечены как доставленные ${markedCount} сообщений в комнате ${roomId}`);
+                
+                // Показываем уведомление только если это не наш собственный вход
+                if (typeof showStatus === 'function' && markedCount > 0) {
+                    showStatus(`📬 ${markedCount} сообщений доставлено`);
+                }
+            } else {
+                console.log(`📭 Нет сообщений для пометки в комнате ${roomId}`);
             }
+        }
+    } catch (error) {
+        console.error('❌ Error marking messages as delivered:', error);
+    }
+}
 
             // Delete message
             async function deleteMessage(messageId) {
@@ -1668,7 +1687,15 @@ async function globalCleanupBySize(maxSizeMB = 900) {
             async function switchRoom(roomId) {
                 const room = rooms.get(roomId);
                 if (!room) return;
-
+    if (currentRoomId) {
+        try {
+            // Удаляем присутствие из старой комнаты
+            await db.ref(`rooms/${currentRoomId}/presence/${userId}`).remove();
+            console.log(`Удален из предыдущей комнаты ${currentRoomId}`);
+        } catch (error) {
+            console.error('Error removing from previous room:', error);
+        }
+    }
                 // Clean up old listeners
                 if (messagesRef) messagesRef.off();
                 if (peerPresenceRef) peerPresenceRef.off();
@@ -1746,60 +1773,80 @@ async function globalCleanupBySize(maxSizeMB = 900) {
                 }
             }
 
-            // Setup real-time messages listener
-            function setupMessagesListener(roomId, key) {
-                messagesRef = db.ref(`rooms/${roomId}/messages`);
-                
-                if (currentMessagesListener) {
-                    messagesRef.off('child_added', currentMessagesListener);
-                }
-                
-                currentMessagesListener = messagesRef.on('child_added', async (snapshot) => {
-                    if (!snapshot || !snapshot.exists()) return;
-                    
-                    const msg = snapshot.val();
-                    if (!msg || !msg.data || msg.deleted) return;
-                    
-                    const isOwn = msg.from === userId;
-                    const decrypted = await decryptMessage(msg.data, key);
-                    
-                    const existingMessage = document.querySelector(`[data-message-id="${snapshot.key}"]`);
-                    if (!existingMessage) {
-                        // Передаем статус delivered из Firebase
-                        addMessageToUI(decrypted, isOwn, msg.ts, msg.delivered || false, snapshot.key);
-                    }
-                    
-                    // Update last message in room list
-                    const roomItem = document.querySelector(`.room-item[data-room-id="${roomId}"] .room-last-message`);
-                    const roomTime = document.querySelector(`.room-item[data-room-id="${roomId}"] .room-time`);
-                    if (roomItem) {
-                        roomItem.textContent = decrypted.substring(0, 30) + (decrypted.length > 30 ? '...' : '');
-                    }
-                    if (roomTime) {
-                        roomTime.textContent = new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    }
-                });
-                
-                messagesRef.on('child_changed', (snapshot) => {
-                    if (!snapshot || !snapshot.exists()) return;
-                    
-                    const msg = snapshot.val();
-                    if (msg && msg.deleted) {
-                        const messageElement = document.querySelector(`[data-message-id="${snapshot.key}"]`);
-                        if (messageElement) {
-                            messageElement.closest('.message-wrapper').remove();
-                        }
-                    }
-                    
-                    // Обновляем статус доставки если изменился
-                    if (msg && msg.delivered === true) {
-                        const messageElement = document.querySelector(`[data-message-id="${snapshot.key}"] .delivery-status-badge`);
-                        if (messageElement) {
-                            messageElement.innerHTML = ' <i class="fas fa-check-circle delivered" title="Доставлено"></i>';
-                        }
-                    }
-                });
+// Setup real-time messages listener
+function setupMessagesListener(roomId, key) {
+    messagesRef = db.ref(`rooms/${roomId}/messages`);
+    
+    if (currentMessagesListener) {
+        messagesRef.off('child_added', currentMessagesListener);
+    }
+    
+    // Слушаем новые сообщения
+    currentMessagesListener = messagesRef.on('child_added', async (snapshot) => {
+        if (!snapshot || !snapshot.exists()) return;
+        
+        const msg = snapshot.val();
+        if (!msg || !msg.data || msg.deleted) return;
+        
+        const isOwn = msg.from === userId;
+        const decrypted = await decryptMessage(msg.data, key);
+        
+        const existingMessage = document.querySelector(`[data-message-id="${snapshot.key}"]`);
+        if (!existingMessage) {
+            // Передаем статус delivered из Firebase
+            addMessageToUI(decrypted, isOwn, msg.ts, msg.delivered || false, snapshot.key);
+            
+            // Если это чужое сообщение и мы онлайн - немедленно помечаем как доставленное
+            if (!isOwn && !msg.delivered) {
+                console.log('📨 Новое чужое сообщение, помечаем как доставленное');
+                const updates = {};
+                updates[`rooms/${roomId}/messages/${snapshot.key}/delivered`] = true;
+                db.ref().update(updates).catch(console.error);
             }
+        }
+        
+        // Update last message in room list
+        const roomItem = document.querySelector(`.room-item[data-room-id="${roomId}"] .room-last-message`);
+        const roomTime = document.querySelector(`.room-item[data-room-id="${roomId}"] .room-time`);
+        if (roomItem) {
+            roomItem.textContent = decrypted.substring(0, 30) + (decrypted.length > 30 ? '...' : '');
+        }
+        if (roomTime) {
+            roomTime.textContent = new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+    });
+    
+    // Слушаем изменения сообщений (включая статус доставки)
+    messagesRef.on('child_changed', (snapshot) => {
+        if (!snapshot || !snapshot.exists()) return;
+        
+        const msg = snapshot.val();
+        
+        // Обновляем статус доставки если изменился
+        if (msg && msg.delivered === true) {
+            // Ищем элемент сообщения по data-message-id
+            const messageElement = document.querySelector(`[data-message-id="${snapshot.key}"]`);
+            if (messageElement) {
+                const statusBadge = messageElement.querySelector('.delivery-status-badge');
+                if (statusBadge) {
+                    statusBadge.innerHTML = ' <i class="fas fa-check-circle delivered" title="Доставлено"></i>';
+                    console.log(`✅ Обновлен статус сообщения ${snapshot.key} на доставлено`);
+                }
+            } else {
+                // Если элемента нет в текущем чате (может быть в другом), но мы все равно логируем
+                console.log(`📬 Сообщение ${snapshot.key} помечено как доставленное`);
+            }
+        }
+        
+        // Обработка удаления
+        if (msg && msg.deleted) {
+            const messageElement = document.querySelector(`[data-message-id="${snapshot.key}"]`);
+            if (messageElement) {
+                messageElement.closest('.message-wrapper').remove();
+            }
+        }
+    });
+}
 
             // Add message to UI
             function addMessageToUI(text, isOwn, timestamp, isDelivered = false, messageId = null) {
@@ -1870,37 +1917,58 @@ async function globalCleanupBySize(maxSizeMB = 900) {
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }
 
-            // Функция отправки сообщения с полем delivered
-            async function sendMessage(text) {
-                if (!currentRoomId || !cryptoKey || !text.trim()) return;
+    // Функция отправки сообщения с полем delivered
+// Функция отправки сообщения с полем delivered
+async function sendMessage(text) {
+    if (!currentRoomId || !cryptoKey || !text.trim()) return;
 
-                try {
-                    const encrypted = await encryptMessage(text, cryptoKey);
-                    
-                    // Проверяем, есть ли кто-то онлайн в комнате (кроме себя)
-                    const hasOtherOnline = onlineStatusInRooms.get(currentRoomId) || false;
-                    
-                    const messageObj = {
-                        data: encrypted,
-                        from: userId,
-                        ts: Date.now(),
-                        delivered: hasOtherOnline // Если есть другие онлайн, считаем доставленным
-                    };
-
-                    await db.ref(`rooms/${currentRoomId}/messages`).push(messageObj);
-                    
-                    if (navigator.onLine) {
-                        showStatus('✅ Сообщение отправлено');
-                    } else {
-                        showStatus('📦 Сообщение сохранено и будет доставлено при подключении');
-                    }
-                    
-                    messageInput.value = '';
-                } catch (error) {
-                    console.error('Send error:', error);
-                    showStatus('Ошибка отправки', true);
-                }
+    try {
+        const encrypted = await encryptMessage(text, cryptoKey);
+        
+        // Проверяем, есть ли кто-то онлайн в комнате (включая других пользователей)
+        let otherOnlineCount = 0;
+        try {
+            const presenceSnap = await db.ref(`rooms/${currentRoomId}/presence`).once('value');
+            if (presenceSnap.exists()) {
+                const users = presenceSnap.val() || {};
+                otherOnlineCount = Object.entries(users)
+                    .filter(([id, data]) => id !== userId && data && data.online === true)
+                    .length;
             }
+        } catch (e) {
+            console.error('Error checking presence on send:', e);
+        }
+        
+        // Сообщение считается доставленным, если есть хотя бы один другой онлайн пользователь
+        const isDelivered = otherOnlineCount > 0;
+        
+        console.log(`📤 Отправка сообщения: доставлено=${isDelivered}, других онлайн=${otherOnlineCount}`);
+        
+        const messageObj = {
+            data: encrypted,
+            from: userId,
+            ts: Date.now(),
+            delivered: isDelivered
+        };
+
+        const newMessageRef = await db.ref(`rooms/${currentRoomId}/messages`).push(messageObj);
+        
+        if (navigator.onLine) {
+            if (isDelivered) {
+                showStatus('✅ Сообщение доставлено');
+            } else {
+                showStatus('📤 Сообщение отправлено (ожидает доставки)');
+            }
+        } else {
+            showStatus('📦 Сообщение сохранено и будет доставлено при подключении');
+        }
+        
+        messageInput.value = '';
+    } catch (error) {
+        console.error('Send error:', error);
+        showStatus('Ошибка отправки', true);
+    }
+}
 
             // Global presence setup
             function setupGlobalPresence() {
@@ -1939,88 +2007,113 @@ async function globalCleanupBySize(maxSizeMB = 900) {
                     console.error('Error in global presence:', error);
                 });
             }
-
-            // Room presence setup with immediate updates
-            function setupRoomPresence(roomId) {
-                if (!roomId) return;
+// Room presence setup with immediate updates
+function setupRoomPresence(roomId) {
+    if (!roomId) return;
+    
+    try {
+        // Сначала удаляем старое присутствие из этой комнаты (на всякий случай)
+        db.ref(`rooms/${roomId}/presence/${userId}`).remove()
+            .then(() => {
+                // Теперь устанавливаем новое
+                const myRoomPresenceRef = db.ref(`rooms/${roomId}/presence/${userId}`);
                 
-                try {
-                    const myRoomPresenceRef = db.ref(`rooms/${roomId}/presence/${userId}`);
-                    
-                    // Remove old presence listener if exists
-                    if (roomPresenceRef) {
-                        roomPresenceRef.off();
-                    }
-                    
-                    roomPresenceRef = db.ref(`rooms/${roomId}/presence`);
+                // Set own presence immediately
+                myRoomPresenceRef.set({
+                    online: true,
+                    lastSeen: Date.now(),
+                    roomId: roomId
+                }).catch(error => console.error('Error setting room presence:', error));
+                
+                // Set onDisconnect
+                myRoomPresenceRef.onDisconnect().remove();
+            })
+            .catch(error => console.error('Error cleaning old presence:', error));
 
-                    // Set own presence immediately
-                    myRoomPresenceRef.set({
-                        online: true,
-                        lastSeen: Date.now()
-                    }).catch(error => console.error('Error setting room presence:', error));
-                    
-                    // Set onDisconnect
-                    myRoomPresenceRef.onDisconnect().remove();
+        // Remove old presence listener if exists
+        if (roomPresenceRef) {
+            roomPresenceRef.off();
+        }
+        
+        roomPresenceRef = db.ref(`rooms/${roomId}/presence`);
 
-                    // Listen to other users in room with immediate updates
-                    roomPresenceRef.on('value', (snapshot) => {
-                        if (snapshot && snapshot.exists()) {
-                            const users = snapshot.val() || {};
-                            
-                            // Get all online users except self
-                            const onlineUsers = Object.entries(users)
-                                .filter(([id, data]) => id !== userId && data && data.online === true)
-                                .map(([id, data]) => ({ id, ...data }));
-                            
-                            const onlineCount = onlineUsers.length;
-                            const wasOnline = onlineStatusInRooms.get(roomId) || false;
-                            
-                            // Обновляем статус для этой комнаты
-                            onlineStatusInRooms.set(roomId, onlineCount > 0);
-                            
-                            // ВАЖНО: Если появились онлайн пользователи (было 0, стало >0)
-                            // помечаем ВСЕ старые сообщения как доставленные
-                            if (!wasOnline && onlineCount > 0) {
-                                console.log('Пользователь зашел онлайн, помечаем сообщения как доставленные');
-                                markMessagesAsDelivered(roomId);
-                            }
-                            
-                            // Update UI immediately
-                            roomOnlineCount.textContent = onlineCount;
-                            
-                            // Update peer status immediately
-                            if (onlineCount > 0) {
-                                peerStatus.innerHTML = '<i class="fas fa-circle"></i> в сети';
-                                peerStatus.className = 'status-badge online';
-                            } else {
-                                peerStatus.innerHTML = '<i class="fas fa-circle"></i> не в сети';
-                                peerStatus.className = 'status-badge offline';
-                            }
-                            
-                            // Update room online indicator
-                            updateRoomOnlineStatus(roomId, onlineCount > 0);
-                            
-                            // Update global presence with current room
-                            if (myGlobalPresenceRef) {
-                                myGlobalPresenceRef.update({ currentRoom: roomId })
-                                    .catch(error => console.error('Error updating global presence:', error));
-                            }
-                        } else {
-                            roomOnlineCount.textContent = '0';
-                            onlineStatusInRooms.set(roomId, false);
-                            peerStatus.innerHTML = '<i class="fas fa-circle"></i> не в сети';
-                            peerStatus.className = 'status-badge offline';
-                            updateRoomOnlineStatus(roomId, false);
+        // Listen to other users in room with immediate updates
+        roomPresenceRef.on('value', (snapshot) => {
+            if (snapshot && snapshot.exists()) {
+                const users = snapshot.val() || {};
+                
+                // Получаем всех пользователей в комнате
+                const allUsers = Object.entries(users)
+                    .map(([id, data]) => ({ id, ...data }))
+                    .filter(u => u.online === true);
+                
+                // Получаем всех онлайн пользователей кроме себя
+                const otherOnlineUsers = allUsers.filter(u => u.id !== userId);
+                const onlineCount = otherOnlineUsers.length;
+                
+                // Получаем был ли кто-то онлайн до этого
+                const wasOnline = onlineStatusInRooms.get(roomId) || false;
+                
+                console.log(`👥 Комната ${roomId}: ${onlineCount} других онлайн`);
+                
+                // Обновляем статус для этой комнаты
+                onlineStatusInRooms.set(roomId, onlineCount > 0);
+                
+                // ВАЖНО: Если в комнате есть кто-то онлайн (включая нас самих?)
+                // Мы хотим помечать сообщения как доставленные, когда получатель онлайн,
+                // но отправитель может быть не в сети и все равно должен увидеть галочки при заходе
+                if (onlineCount > 0 || allUsers.length > 0) {
+                    console.log('🎯 Есть пользователи в комнате, проверяем сообщения на доставку');
+                    
+                    // Немедленно помечаем сообщения
+                    markMessagesAsDelivered(roomId).then(() => {
+                        // После пометки, принудительно обновляем UI для текущего пользователя
+                       
+                        if (currentRoomId === roomId) {
+                            console.log('🔄 Принудительное обновление сообщений в текущей комнате');
+                            // Перезагружаем сообщения чтобы увидеть обновленные статусы
+                            messagesContainer.innerHTML = '';
+                            loadMessages(roomId, cryptoKey).catch(console.error);
                         }
-                    }, (error) => {
-                        console.error('Error in room presence:', error);
                     });
-                    
-                } catch (error) {
-                    console.error('Error setting up room presence:', error);
                 }
+                
+                // Update UI immediately
+                roomOnlineCount.textContent = onlineCount;
+                
+                // Update peer status immediately
+                if (onlineCount > 0) {
+                    peerStatus.innerHTML = '<i class="fas fa-circle"></i> в сети';
+                    peerStatus.className = 'status-badge online';
+                } else {
+                    peerStatus.innerHTML = '<i class="fas fa-circle"></i> не в сети';
+                    peerStatus.className = 'status-badge offline';
+                }
+                
+                // Update room online indicator
+                updateRoomOnlineStatus(roomId, onlineCount > 0);
+                
+                // Update global presence with current room
+                if (myGlobalPresenceRef) {
+                    myGlobalPresenceRef.update({ currentRoom: roomId })
+                        .catch(error => console.error('Error updating global presence:', error));
+                }
+            } else {
+                console.log(`👻 Никого нет в комнате ${roomId}`);
+                roomOnlineCount.textContent = '0';
+                onlineStatusInRooms.set(roomId, false);
+                peerStatus.innerHTML = '<i class="fas fa-circle"></i> не в сети';
+                peerStatus.className = 'status-badge offline';
+                updateRoomOnlineStatus(roomId, false);
             }
+        }, (error) => {
+            console.error('Error in room presence:', error);
+        });
+        
+    } catch (error) {
+        console.error('Error setting up room presence:', error);
+    }
+}
 
             // Event: New chat
             newChatBtn.addEventListener('click', async () => {
@@ -2144,9 +2237,14 @@ async function initialize() {
                     if (myGlobalPresenceRef) {
                         myGlobalPresenceRef.remove();
                     }
-                    if (currentRoomId) {
-                        db.ref(`rooms/${currentRoomId}/presence/${userId}`).remove();
-                    }
+
+     const savedRooms = loadSavedRooms();
+        for (const roomId of Object.keys(savedRooms)) {
+            db.ref(`rooms/${roomId}/presence/${userId}`).remove()
+                .catch(error => console.log(`Error removing from ${roomId}:`, error));
+        }
+
+                   
                     if (connectedRef) connectedRef.off();
                     if (globalPresenceRef) globalPresenceRef.off();
                     if (roomPresenceRef) roomPresenceRef.off();
