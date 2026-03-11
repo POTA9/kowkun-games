@@ -1561,24 +1561,57 @@ async function markMessagesAsDelivered(roomId) {
     try {
         console.log(`🔍 Проверка сообщений для доставки в комнате ${roomId}`);
         
-        // Получаем все сообщения в комнате
-        const snapshot = await db.ref(`rooms/${roomId}/messages`).once('value');
+        // Получаем всех онлайн пользователей в комнате
+        const presenceSnap = await db.ref(`rooms/${roomId}/presence`).once('value');
         
-        if (snapshot.exists()) {
+        // Проверяем, есть ли хоть кто-то онлайн в комнате
+        let anyoneOnline = false;
+        const onlineUserIds = new Set();
+        
+        if (presenceSnap.exists()) {
+            const users = presenceSnap.val() || {};
+            Object.entries(users).forEach(([id, data]) => {
+                if (data && data.online === true) {
+                    onlineUserIds.add(id);
+                    anyoneOnline = true;
+                }
+            });
+        }
+        
+        console.log(`👥 Онлайн пользователи в комнате ${roomId}:`, Array.from(onlineUserIds));
+        console.log(`👤 Есть кто-то онлайн: ${anyoneOnline}`);
+        
+        // Если вообще никого нет онлайн - ничего не делаем
+        if (!anyoneOnline) {
+            console.log(`📭 Нет никого онлайн в комнате, сообщения не помечаем`);
+            return;
+        }
+        
+        // Получаем все сообщения в комнате
+        const messagesSnap = await db.ref(`rooms/${roomId}/messages`).once('value');
+        
+        if (messagesSnap.exists()) {
             const updates = {};
             let hasUpdates = false;
             let markedCount = 0;
             
-            snapshot.forEach((childSnapshot) => {
+            messagesSnap.forEach((childSnapshot) => {
                 const msg = childSnapshot.val();
-                // Помечаем как доставленные ВСЕ непрочитанные сообщения, КРОМЕ:
-                // 1. Уже доставленных
-                // 2. Удаленных
-                // 3. Сообщений от текущего пользователя (их не нужно помечать как доставленные для него самого)
+                const messageId = childSnapshot.key;
+                
+                // Помечаем все НЕ доставленные и НЕ удаленные сообщения
+                // НО не помечаем сообщения от текущего пользователя (он сам их видит)
                 if (msg.delivered !== true && !msg.deleted) {
-                    updates[`rooms/${roomId}/messages/${childSnapshot.key}/delivered`] = true;
-                    hasUpdates = true;
-                    markedCount++;
+                    
+                    // Не помечаем свои собственные сообщения
+                    if (msg.from !== userId) {
+                        updates[`rooms/${roomId}/messages/${messageId}/delivered`] = true;
+                        hasUpdates = true;
+                        markedCount++;
+                        console.log(`📬 Помечаем сообщение ${messageId} от ${msg.from}`);
+                    } else {
+                        console.log(`⏭️ Пропускаем свое сообщение ${messageId}`);
+                    }
                 }
             });
             
@@ -1586,9 +1619,25 @@ async function markMessagesAsDelivered(roomId) {
                 await db.ref().update(updates);
                 console.log(`✅ Помечены как доставленные ${markedCount} сообщений в комнате ${roomId}`);
                 
-                // Показываем уведомление только если это не наш собственный вход
+                // Показываем уведомление только если есть что-то новое
                 if (typeof showStatus === 'function' && markedCount > 0) {
                     showStatus(`📬 ${markedCount} сообщений доставлено`);
+                }
+                
+                // Если мы сейчас в этой комнате - обновляем UI
+                if (currentRoomId === roomId && cryptoKey) {
+                    console.log('🔄 Обновляем UI после пометки сообщений');
+                    
+                    // Сохраняем позицию скролла
+                    const scrollPos = messagesContainer.scrollTop;
+                    const scrollHeight = messagesContainer.scrollHeight;
+                    
+                    // Перезагружаем сообщения чтобы увидеть обновленные статусы
+                    messagesContainer.innerHTML = '';
+                    await loadMessages(roomId, cryptoKey);
+                    
+                    // Восстанавливаем позицию скролла
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight - scrollHeight + scrollPos;
                 }
             } else {
                 console.log(`📭 Нет сообщений для пометки в комнате ${roomId}`);
@@ -1917,7 +1966,6 @@ function setupMessagesListener(roomId, key) {
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }
 
-    // Функция отправки сообщения с полем delivered
 // Функция отправки сообщения с полем delivered
 async function sendMessage(text) {
     if (!currentRoomId || !cryptoKey || !text.trim()) return;
@@ -1925,7 +1973,7 @@ async function sendMessage(text) {
     try {
         const encrypted = await encryptMessage(text, cryptoKey);
         
-        // Проверяем, есть ли кто-то онлайн в комнате (включая других пользователей)
+        // Проверяем, есть ли кто-то онлайн в комнате КРОМЕ НАС
         let otherOnlineCount = 0;
         try {
             const presenceSnap = await db.ref(`rooms/${currentRoomId}/presence`).once('value');
@@ -1939,7 +1987,7 @@ async function sendMessage(text) {
             console.error('Error checking presence on send:', e);
         }
         
-        // Сообщение считается доставленным, если есть хотя бы один другой онлайн пользователь
+        // Сообщение считается доставленным, только если есть другие онлайн пользователи
         const isDelivered = otherOnlineCount > 0;
         
         console.log(`📤 Отправка сообщения: доставлено=${isDelivered}, других онлайн=${otherOnlineCount}`);
@@ -2012,7 +2060,7 @@ function setupRoomPresence(roomId) {
     if (!roomId) return;
     
     try {
-        // Сначала удаляем старое присутствие из этой комнаты (на всякий случай)
+        // Сначала удаляем старое присутствие из этой комнаты
         db.ref(`rooms/${roomId}/presence/${userId}`).remove()
             .then(() => {
                 // Теперь устанавливаем новое
@@ -2038,7 +2086,7 @@ function setupRoomPresence(roomId) {
         roomPresenceRef = db.ref(`rooms/${roomId}/presence`);
 
         // Listen to other users in room with immediate updates
-        roomPresenceRef.on('value', (snapshot) => {
+        roomPresenceRef.on('value', async (snapshot) => {
             if (snapshot && snapshot.exists()) {
                 const users = snapshot.val() || {};
                 
@@ -2047,42 +2095,27 @@ function setupRoomPresence(roomId) {
                     .map(([id, data]) => ({ id, ...data }))
                     .filter(u => u.online === true);
                 
-                // Получаем всех онлайн пользователей кроме себя
-                const otherOnlineUsers = allUsers.filter(u => u.id !== userId);
-                const onlineCount = otherOnlineUsers.length;
+                const onlineCount = allUsers.length;
                 
-                // Получаем был ли кто-то онлайн до этого
-                const wasOnline = onlineStatusInRooms.get(roomId) || false;
-                
-                console.log(`👥 Комната ${roomId}: ${onlineCount} других онлайн`);
+                console.log(`👥 Комната ${roomId}: ${onlineCount} всего онлайн`);
                 
                 // Обновляем статус для этой комнаты
                 onlineStatusInRooms.set(roomId, onlineCount > 0);
                 
-                // ВАЖНО: Если в комнате есть кто-то онлайн (включая нас самих?)
-                // Мы хотим помечать сообщения как доставленные, когда получатель онлайн,
-                // но отправитель может быть не в сети и все равно должен увидеть галочки при заходе
-                if (onlineCount > 0 || allUsers.length > 0) {
+                // ВАЖНО: Если есть хоть кто-то онлайн (включая нас самих)
+                if (onlineCount > 0) {
                     console.log('🎯 Есть пользователи в комнате, проверяем сообщения на доставку');
                     
-                    // Немедленно помечаем сообщения
-                    markMessagesAsDelivered(roomId).then(() => {
-                        // После пометки, принудительно обновляем UI для текущего пользователя
-                       
-                        if (currentRoomId === roomId) {
-                            console.log('🔄 Принудительное обновление сообщений в текущей комнате');
-                            // Перезагружаем сообщения чтобы увидеть обновленные статусы
-                            messagesContainer.innerHTML = '';
-                            loadMessages(roomId, cryptoKey).catch(console.error);
-                        }
-                    });
+                    // Помечаем сообщения как доставленные
+                    await markMessagesAsDelivered(roomId);
                 }
                 
                 // Update UI immediately
                 roomOnlineCount.textContent = onlineCount;
                 
-                // Update peer status immediately
-                if (onlineCount > 0) {
+                // Update peer status (показываем есть ли кто-то кроме нас)
+                const otherOnlineCount = allUsers.filter(u => u.id !== userId).length;
+                if (otherOnlineCount > 0) {
                     peerStatus.innerHTML = '<i class="fas fa-circle"></i> в сети';
                     peerStatus.className = 'status-badge online';
                 } else {
@@ -2091,7 +2124,7 @@ function setupRoomPresence(roomId) {
                 }
                 
                 // Update room online indicator
-                updateRoomOnlineStatus(roomId, onlineCount > 0);
+                updateRoomOnlineStatus(roomId, otherOnlineCount > 0);
                 
                 // Update global presence with current room
                 if (myGlobalPresenceRef) {
