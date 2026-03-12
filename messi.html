@@ -1159,6 +1159,59 @@
             const totalUsersCount = document.getElementById('totalUsersCount');
             const roomOnlineCount = document.getElementById('roomOnlineCount');
 
+
+
+
+
+            function updateRoomMessageIndicators(roomId) {
+    const roomItem = document.querySelector(`.room-item[data-room-id="${roomId}"]`);
+    if (!roomItem) return;
+    
+    const avatar = roomItem.querySelector('.room-avatar');
+    
+    // Удаляем старые индикаторы сообщений
+    const oldIndicators = avatar.querySelectorAll('.message-indicator');
+    oldIndicators.forEach(el => el.remove());
+    
+    // Получаем статистику сообщений для комнаты
+    db.ref(`rooms/${roomId}/messages`).once('value', (snapshot) => {
+        if (!snapshot.exists()) return;
+        
+        let myPendingCount = 0;
+        let otherPendingCount = 0;
+        
+        snapshot.forEach((msgSnapshot) => {
+            const msg = msgSnapshot.val();
+            if (msg && !msg.deleted && msg.delivered === false) {
+                if (msg.from === userId) {
+                    myPendingCount++;
+                } else {
+                    otherPendingCount++;
+                }
+            }
+        });
+        
+        // Добавляем индикатор для своих сообщений с часиками (слева сверху)
+        if (myPendingCount > 0) {
+            const myIndicator = document.createElement('span');
+            myIndicator.className = 'message-indicator my-pending';
+            myIndicator.setAttribute('data-side', 'left');
+            myIndicator.title = `${myPendingCount} ваших сообщений ожидают доставки`;
+            myIndicator.innerHTML = '<i class="fas fa-clock" style="font-size: 8px;"></i>';
+            avatar.appendChild(myIndicator);
+        }
+        
+        // Добавляем индикатор для чужих сообщений с часиками (справа сверху)
+        if (otherPendingCount > 0) {
+            const otherIndicator = document.createElement('span');
+            otherIndicator.className = 'message-indicator other-pending';
+            otherIndicator.setAttribute('data-side', 'right');
+            otherIndicator.title = `${otherPendingCount} сообщений от других ожидают доставки`;
+            otherIndicator.innerHTML = '<i class="fas fa-lock" style="font-size: 8px;"></i>';
+            avatar.appendChild(otherIndicator);
+        }
+    });
+}
             // Функции для управления меню
             function openSidebar() {
                 if (window.innerWidth <= 768) {
@@ -1554,17 +1607,14 @@ async function globalCleanupBySize(maxSizeMB = 900) {
                 }
             }
 
-// Функция для пометки сообщений как доставленных
 async function markMessagesAsDelivered(roomId) {
     if (!roomId) return;
     
     try {
         console.log(`🔍 Проверка сообщений для доставки в комнате ${roomId}`);
         
-        // Получаем всех онлайн пользователей в комнате
         const presenceSnap = await db.ref(`rooms/${roomId}/presence`).once('value');
         
-        // Проверяем, есть ли хоть кто-то онлайн в комнате
         let anyoneOnline = false;
         const onlineUserIds = new Set();
         
@@ -1579,15 +1629,12 @@ async function markMessagesAsDelivered(roomId) {
         }
         
         console.log(`👥 Онлайн пользователи в комнате ${roomId}:`, Array.from(onlineUserIds));
-        console.log(`👤 Есть кто-то онлайн: ${anyoneOnline}`);
         
-        // Если вообще никого нет онлайн - ничего не делаем
         if (!anyoneOnline) {
             console.log(`📭 Нет никого онлайн в комнате, сообщения не помечаем`);
             return;
         }
         
-        // Получаем все сообщения в комнате
         const messagesSnap = await db.ref(`rooms/${roomId}/messages`).once('value');
         
         if (messagesSnap.exists()) {
@@ -1599,19 +1646,11 @@ async function markMessagesAsDelivered(roomId) {
                 const msg = childSnapshot.val();
                 const messageId = childSnapshot.key;
                 
-                // Помечаем все НЕ доставленные и НЕ удаленные сообщения
-                // НО не помечаем сообщения от текущего пользователя (он сам их видит)
-                if (msg.delivered !== true && !msg.deleted) {
-                    
-                    // Не помечаем свои собственные сообщения
-                    if (msg.from !== userId) {
-                        updates[`rooms/${roomId}/messages/${messageId}/delivered`] = true;
-                        hasUpdates = true;
-                        markedCount++;
-                        console.log(`📬 Помечаем сообщение ${messageId} от ${msg.from}`);
-                    } else {
-                        console.log(`⏭️ Пропускаем свое сообщение ${messageId}`);
-                    }
+                if (msg.delivered !== true && !msg.deleted && msg.from !== userId) {
+                    updates[`rooms/${roomId}/messages/${messageId}/delivered`] = true;
+                    hasUpdates = true;
+                    markedCount++;
+                    console.log(`📬 Помечаем сообщение ${messageId} от ${msg.from}`);
                 }
             });
             
@@ -1619,34 +1658,39 @@ async function markMessagesAsDelivered(roomId) {
                 await db.ref().update(updates);
                 console.log(`✅ Помечены как доставленные ${markedCount} сообщений в комнате ${roomId}`);
                 
-                // Показываем уведомление только если есть что-то новое
+                // Обновляем индикаторы после пометки сообщений
+                updateRoomMessageIndicators(roomId);
+                
                 if (typeof showStatus === 'function' && markedCount > 0) {
                     showStatus(`📬 ${markedCount} сообщений доставлено`);
                 }
                 
-                // Если мы сейчас в этой комнате - обновляем UI
                 if (currentRoomId === roomId && cryptoKey) {
                     console.log('🔄 Обновляем UI после пометки сообщений');
                     
-                    // Сохраняем позицию скролла
                     const scrollPos = messagesContainer.scrollTop;
                     const scrollHeight = messagesContainer.scrollHeight;
                     
-                    // Перезагружаем сообщения чтобы увидеть обновленные статусы
                     messagesContainer.innerHTML = '';
                     await loadMessages(roomId, cryptoKey);
                     
-                    // Восстанавливаем позицию скролла
                     messagesContainer.scrollTop = messagesContainer.scrollHeight - scrollHeight + scrollPos;
                 }
-            } else {
-                console.log(`📭 Нет сообщений для пометки в комнате ${roomId}`);
             }
         }
     } catch (error) {
         console.error('❌ Error marking messages as delivered:', error);
     }
 }
+
+// Добавьте периодическое обновление индикаторов (каждые 5 секунд)
+setInterval(() => {
+   if (rooms.size > 0) {
+       rooms.forEach((_, roomId) => {
+           updateRoomMessageIndicators(roomId);
+        });
+ }
+}, 4000);
 
             // Delete message
             async function deleteMessage(messageId) {
@@ -1668,69 +1712,108 @@ async function markMessagesAsDelivered(roomId) {
                 }
             }
 
-            // Add room to UI
-            function addRoomToUI(roomId, keyBase64, name, lastMsg = '', lastTime = Date.now()) {
-                if (rooms.has(roomId)) return;
-                
-                rooms.set(roomId, { keyBase64, name });
-                
-                const roomEl = document.createElement('div');
-                roomEl.className = `room-item ${currentRoomId === roomId ? 'active' : ''}`;
-                roomEl.dataset.roomId = roomId;
-                
-                const avatarColor = getAvatarColor(name || roomId);
-                
-                roomEl.innerHTML = `
-                    <div class="room-avatar" data-color="${avatarColor}">
-                        ${(name || roomId)[0].toUpperCase()}
-                        <span class="room-online-indicator offline"></span>
-                    </div>
-                    <div class="room-info">
-                        <div class="room-name">
-                            <span>${name || 'Без названия'}</span>
-                            <span class="room-time">${new Date(lastTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                        </div>
-                        <div class="room-last-message">
-                            ${lastMsg || 'Нет сообщений'}
-                        </div>
-                    </div>
-                    <div class="room-actions">
-                        <button class="room-action-btn copy-key" title="Копировать ключ комнаты">
-                            <i class="fas fa-key"></i>
-                        </button>
-                        <button class="room-action-btn delete" title="Удалить чат">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                `;
-                
-                // Room click (switch)
-                roomEl.addEventListener('click', (e) => {
-                    if (!e.target.closest('.room-action-btn')) {
-                        switchRoom(roomId);
-                    }
-                });
-                
-                // Copy key button
-                roomEl.querySelector('.copy-key').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    copyToClipboard(`${roomId}:${keyBase64}`);
-                });
-                
-                // Delete button
-                roomEl.querySelector('.delete').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    showConfirm(
-                        'Удалить чат?',
-                        `Вы уверены, что хотите удалить чат "${name || roomId}"? Это действие нельзя отменить.`,
-                        () => {
-                            deleteRoom(roomId);
-                        }
-                    );
-                });
-                
-                roomsListEl.appendChild(roomEl);
+function addRoomToUI(roomId, keyBase64, name, lastMsg = '', lastTime = Date.now()) {
+    if (rooms.has(roomId)) return;
+    
+    rooms.set(roomId, { keyBase64, name });
+    
+    const roomEl = document.createElement('div');
+    roomEl.className = `room-item ${currentRoomId === roomId ? 'active' : ''}`;
+    roomEl.dataset.roomId = roomId;
+    
+    const avatarColor = getAvatarColor(name || roomId);
+    
+    roomEl.innerHTML = `
+        <div class="room-avatar" data-color="${avatarColor}" style="position: relative;">
+            ${(name || roomId)[0].toUpperCase()}
+            <span class="room-online-indicator offline"></span>
+        </div>
+        <div class="room-info">
+            <div class="room-name">
+                <span>${name || 'Без названия'}</span>
+                <span class="room-time">${new Date(lastTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+            <div class="room-last-message">
+                ${lastMsg || 'Нет сообщений'}
+            </div>
+        </div>
+        <div class="room-actions">
+            <button class="room-action-btn copy-key" title="Копировать ключ комнаты">
+                <i class="fas fa-key"></i>
+            </button>
+            <button class="room-action-btn delete" title="Удалить чат">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+    
+    // Добавляем стили для новых индикаторов
+    const style = document.createElement('style');
+    style.textContent = `
+        .room-avatar {
+            position: relative !important;
+        }
+        .message-indicator {
+            position: absolute;
+            top: -4px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            border: 2px solid var(--bg-secondary);
+            z-index: 5;
+        }
+        .message-indicator.my-pending {
+            background: var(--warning);
+            color: #000;
+            left: -4px;
+        }
+        .message-indicator.other-pending {
+            background: var(--accent);
+            color: white;
+            right: -4px;
+        }
+        .message-indicator i {
+            font-size: 8px !important;
+        }
+        .room-online-indicator {
+            z-index: 10;
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // Добавляем обработчики событий
+    roomEl.addEventListener('click', (e) => {
+        if (!e.target.closest('.room-action-btn')) {
+            switchRoom(roomId);
+        }
+    });
+    
+    roomEl.querySelector('.copy-key').addEventListener('click', (e) => {
+        e.stopPropagation();
+        copyToClipboard(`${roomId}:${keyBase64}`);
+    });
+    
+    roomEl.querySelector('.delete').addEventListener('click', (e) => {
+        e.stopPropagation();
+        showConfirm(
+            'Удалить чат?',
+            `Вы уверены, что хотите удалить чат "${name || roomId}"? Это действие нельзя отменить.`,
+            () => {
+                deleteRoom(roomId);
             }
+        );
+    });
+    
+    roomsListEl.appendChild(roomEl);
+    
+    // Обновляем индикаторы для этой комнаты
+    setTimeout(() => updateRoomMessageIndicators(roomId), 100);
+}
+
 
             // Switch room
             async function switchRoom(roomId) {
@@ -1822,7 +1905,6 @@ async function markMessagesAsDelivered(roomId) {
                 }
             }
 
-// Setup real-time messages listener
 function setupMessagesListener(roomId, key) {
     messagesRef = db.ref(`rooms/${roomId}/messages`);
     
@@ -1842,7 +1924,6 @@ function setupMessagesListener(roomId, key) {
         
         const existingMessage = document.querySelector(`[data-message-id="${snapshot.key}"]`);
         if (!existingMessage) {
-            // Передаем статус delivered из Firebase
             addMessageToUI(decrypted, isOwn, msg.ts, msg.delivered || false, snapshot.key);
             
             // Если это чужое сообщение и мы онлайн - немедленно помечаем как доставленное
@@ -1850,9 +1931,12 @@ function setupMessagesListener(roomId, key) {
                 console.log('📨 Новое чужое сообщение, помечаем как доставленное');
                 const updates = {};
                 updates[`rooms/${roomId}/messages/${snapshot.key}/delivered`] = true;
-                db.ref().update(updates).catch(console.error);
+                await db.ref().update(updates);
             }
         }
+        
+        // Обновляем индикаторы для комнаты
+        updateRoomMessageIndicators(roomId);
         
         // Update last message in room list
         const roomItem = document.querySelector(`.room-item[data-room-id="${roomId}"] .room-last-message`);
@@ -1865,15 +1949,17 @@ function setupMessagesListener(roomId, key) {
         }
     });
     
-    // Слушаем изменения сообщений (включая статус доставки)
+    // Слушаем изменения сообщений
     messagesRef.on('child_changed', (snapshot) => {
         if (!snapshot || !snapshot.exists()) return;
         
         const msg = snapshot.val();
         
+        // Обновляем индикаторы при любых изменениях
+        updateRoomMessageIndicators(roomId);
+        
         // Обновляем статус доставки если изменился
         if (msg && msg.delivered === true) {
-            // Ищем элемент сообщения по data-message-id
             const messageElement = document.querySelector(`[data-message-id="${snapshot.key}"]`);
             if (messageElement) {
                 const statusBadge = messageElement.querySelector('.delivery-status-badge');
@@ -1881,9 +1967,6 @@ function setupMessagesListener(roomId, key) {
                     statusBadge.innerHTML = ' <i class="fas fa-check-circle delivered" title="Доставлено"></i>';
                     console.log(`✅ Обновлен статус сообщения ${snapshot.key} на доставлено`);
                 }
-            } else {
-                // Если элемента нет в текущем чате (может быть в другом), но мы все равно логируем
-                console.log(`📬 Сообщение ${snapshot.key} помечено как доставленное`);
             }
         }
         
@@ -1894,6 +1977,11 @@ function setupMessagesListener(roomId, key) {
                 messageElement.closest('.message-wrapper').remove();
             }
         }
+    });
+    
+    // Также слушаем удаление сообщений
+    messagesRef.on('child_removed', () => {
+        updateRoomMessageIndicators(roomId);
     });
 }
 
