@@ -360,7 +360,7 @@
         .sidebar-overlay.active {
             opacity: 1;
             visibility: visible;
-            pointer-events: none;
+            pointer-events: auto;
         }
 
         /* Основная область */
@@ -1271,7 +1271,7 @@
             document.addEventListener('touchend', handleTouchEnd);
 
             // Mobile menu toggle
-           menuToggle.addEventListener('click', toggleSidebar);
+            menuToggle.addEventListener('click', toggleSidebar);
 
             // Закрыть меню при клике на оверлей
             sidebarOverlay.addEventListener('click', closeSidebar);
@@ -1282,7 +1282,7 @@
                     if (e.target.closest('.room-item') && !e.target.closest('.room-action-btn')) {
                         closeSidebar();
                     }
-               }
+                }
             });
 
             // Generate unique user ID
@@ -1704,6 +1704,8 @@ setInterval(() => {
                         deletedBy: userId,
                         deletedAt: Date.now()
                     });
+                    // Удаление из базы
+                    await db.ref(`rooms/${currentRoomId}/messages/${messageId}`).remove();
                     
                     showStatus('✅ Сообщение удалено');
                 } catch (error) {
@@ -2379,29 +2381,12 @@ async function initialize() {
                     console.error('Error during cleanup:', error);
                 }
             });
-// ПОЛНОСТЬЮ БЛОКИРУЕМ ЗАКРЫТИЕ МЕНЮ ПРИ КЛИКАХ
-document.addEventListener('mousedown', (e) => {
-    if (window.innerWidth <= 768) {
-        if (e.target.closest('.sidebar') || e.target.closest('.sidebar-overlay')) {
-            e.stopPropagation();
-            console.log('Блокируем закрытие');
-        }
-    }
-}, true);
 
-document.addEventListener('touchstart', (e) => {
-    if (window.innerWidth <= 768) {
-        if (e.target.closest('.sidebar') || e.target.closest('.sidebar-overlay')) {
-            e.stopPropagation();
-            console.log('Блокируем закрытие');
-        }
-    }
-}, true);
             // Handle resize
             window.addEventListener('resize', () => {
                 if (window.innerWidth > 768) {
                     closeSidebar();
-               }
+                }
             });
         })();
     </script>
