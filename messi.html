@@ -1166,7 +1166,9 @@
 
 
 
-
+function normalizeRoomId(roomId) {
+    return roomId.toUpperCase();
+}
 
             function updateRoomMessageIndicators(roomId) {
     const roomItem = document.querySelector(`.room-item[data-room-id="${roomId}"]`);
@@ -2277,10 +2279,11 @@ function setupRoomPresence(roomId) {
                     return;
                 }
 
+                const normalizedRoomId = roomId.toUpperCase();
                 try {
                     await importKey(keyBase64);
                     
-                    const roomName = prompt('Название комнаты (необязательно):', `Чат ${roomId}`);
+                    const roomName = prompt('Название комнаты (необязательно):', `Чат ${normalizedRoomId}`);
                     
                     saveRoom(roomId, keyBase64, roomName || `Чат ${roomId}`);
                     addRoomToUI(roomId, keyBase64, roomName || `Чат ${roomId}`, 'Подключено', Date.now());
