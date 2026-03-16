@@ -880,8 +880,13 @@
             }
 
             .encryption-badge {
-                display: none;
-            }
+    display: inline-block;
+}
+@media (max-width: 480px) {
+    .encryption-badge:last-child {
+        display: none;
+    }
+}
 
             .delete-message-btn {
                 width: 28px;
@@ -1704,7 +1709,7 @@ setInterval(() => {
                         deletedBy: userId,
                         deletedAt: Date.now()
                     });
-                    
+                    await db.ref(`rooms/${currentRoomId}/messages/${messageId}`).remove();
                     showStatus('✅ Сообщение удалено');
                 } catch (error) {
                     console.error('Error deleting message:', error);
