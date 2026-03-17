@@ -548,6 +548,54 @@
             gap: 4px;
         }
 
+        /* Стили для индикатора пользователя */
+.user-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    min-width: 10px;
+    margin-right: 6px;
+    margin-bottom: 4px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.message-wrapper.own .user-indicator {
+    display: none; /* Не показываем индикатор для своих сообщений */
+}
+
+.message-content {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    max-width: 70%;
+}
+
+/* Для мобильных устройств */
+@media (max-width: 768px) {
+    .user-indicator {
+        width: 8px;
+        height: 8px;
+        min-width: 8px;
+    }
+}
+
+/* Анимация появления индикатора */
+.user-indicator {
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
         /* Кнопка удаления */
         .delete-message-btn {
             background: rgba(255, 255, 255, 0.1);
@@ -1021,6 +1069,202 @@
                 font-size: 16px !important;
             }
         }
+
+        /* Кнопка ответа */
+.reply-message-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    backdrop-filter: blur(5px);
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.reply-message-btn:hover {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+    transform: scale(1.1);
+}
+
+/* Панель ответа (цитируемое сообщение) */
+/* Улучшенные стили для панели ответа */
+.reply-panel {
+    background: var(--bg-tertiary);
+    border-left: 4px solid var(--accent);
+    border-radius: 12px;
+    padding: 8px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    animation: slideDown 0.2s ease;
+    width: 100%;
+}
+
+.input-area {
+    flex-direction: column;
+    height: auto;
+    min-height: var(--input-area-height);
+    padding: 12px 20px;
+}
+
+.input-area > div {
+    width: 100%;
+}
+
+/* Для мобильных устройств */
+@media (max-width: 768px) {
+    .input-area {
+        padding: 10px 16px;
+    }
+    
+    .reply-panel {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+        margin-bottom: 6px;
+    }
+}
+
+@media (max-width: 480px) {
+    .input-area {
+        padding: 8px 12px;
+    }
+    
+    .reply-panel {
+        padding: 5px 10px;
+        font-size: 0.8rem;
+        margin-bottom: 5px;
+    }
+}
+
+.reply-panel-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.reply-panel-content .reply-to {
+    color: var(--accent);
+    font-size: 0.8rem;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.reply-panel-content .reply-text {
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.reply-panel-content .reply-text i {
+    color: var(--text-muted);
+    margin-right: 4px;
+}
+
+.close-reply-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.close-reply-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+/* Цитируемое сообщение в самом сообщении */
+.reply-quote {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 6px 10px;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    max-width: 100%; /* Ограничиваем ширину родителем */
+    width: 100%;
+    box-sizing: border-box;
+}
+
+
+.reply-quote .reply-quote-author {
+    color: var(--accent);
+    font-size: 0.75rem;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.reply-quote .reply-quote-text {
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+.message {
+    padding: 12px 16px;
+    border-radius: 24px;
+    word-break: break-word;
+    line-height: 1.5;
+    position: relative;
+    font-size: 1rem;
+    max-width: 100%; /* Важно! */
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Для мобильных */
+@media (max-width: 768px) {
+    .message {
+        max-width: 80%;
+        width: 80%;
+    }
+}
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Для мобильных */
+@media (max-width: 768px) {
+    .reply-message-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 0.8rem;
+    }
+    
+    .reply-panel {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+}
     </style>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
@@ -1091,12 +1335,28 @@
             </div>
 
             <div class="input-area" id="inputArea" style="display: none;">
-                <input type="text" id="messageInput" placeholder="Введите сообщение..." autocomplete="off">
-                <button class="send-btn" id="sendMessageBtn">
-                    <i class="fas fa-paper-plane"></i>
-                </button>
+                <!-- Панель ответа (теперь над полем ввода) -->
+                <div id="replyPanel" class="reply-panel" style="display: none;">
+                    <div class="reply-panel-content">
+                        <div class="reply-to" id="replyToInfo">
+                            <i class="fas fa-reply"></i> Ответ для <span id="replyAuthorName">пользователя</span>
+                        </div>
+                        <div class="reply-text" id="replyTextPreview">
+                            <i class="fas fa-quote-right"></i> <span id="replyMessagePreview">Текст сообщения</span>
+                        </div>
+                    </div>
+                    <button class="close-reply-btn" id="closeReplyBtn" title="Отменить ответ">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div style="display: flex; width: 100%; gap: 12px;">
+                    <input type="text" id="messageInput" placeholder="Введите сообщение..." autocomplete="off">
+                    <button class="send-btn" id="sendMessageBtn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
             </div>
-        </div>
     </div>
 
     <div class="notification" id="statusMessage"></div>
@@ -1132,7 +1392,14 @@
             let globalPresenceRef = null;
             let myGlobalPresenceRef = null;
             let userId = generateUserId();
-            
+// Состояние для ответа на сообщение
+let replyToMessage = null; // { id, text, from, authorName }
+
+// DOM элементы для ответа
+const replyPanel = document.getElementById('replyPanel');
+const replyAuthorName = document.getElementById('replyAuthorName');
+const replyMessagePreview = document.getElementById('replyMessagePreview');
+const closeReplyBtn = document.getElementById('closeReplyBtn');
             // Статус онлайн для каждой комнаты
             let onlineStatusInRooms = new Map();
 
@@ -1299,6 +1566,47 @@
                 }
                 return userId;
             }
+
+
+
+            // Добавьте эту функцию в начало скрипта (после генерации userId)
+function getUserColor(userId) {
+    // Используем userId для генерации стабильного цвета
+    let hash = 0;
+    for (let i = 0; i < userId.length; i++) {
+        hash = ((hash << 5) - hash) + userId.charCodeAt(i);
+        hash = hash & hash;
+    }
+    
+    // Список ярких, хорошо различимых цветов
+    const colors = [
+        '#FF6B6B', // красный
+        '#4AE9A0', // зеленый
+        '#5D4EF0', // фиолетовый
+        '#FFAA00', // оранжевый
+        '#FF8C8C', // светло-красный
+        '#6B5BFF', // синий
+        '#FF69B4', // розовый
+        '#00D68F', // бирюзовый
+        '#FFB347', // желто-оранжевый
+        '#A35CFF', // лавандовый
+        '#FF7F50', // коралловый
+        '#20B2AA', // светло-морской
+        '#9370DB', // средне-фиолетовый
+        '#FFA07A', // светло-лососевый
+        '#3CB371', // морской зеленый
+        '#FF6347', // томатный
+        '#BA55D3', // средне-орхидейный
+        '#40E0D0', // бирюзовый
+        '#FFD700', // золотой
+        '#98FB98'  // бледно-зеленый
+    ];
+    
+    // Берем абсолютное значение хеша и получаем индекс
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
+}
+
 
             // Generate avatar color based on room name
             function getAvatarColor(name) {
@@ -1538,6 +1846,105 @@ async function globalCleanupBySize(maxSizeMB = 900) {
         console.error('Ошибка глобальной очистки:', error);
     }
 }
+
+
+// ========== ОЧИСТКА ДЛЯ КАЖДОЙ КОМНАТЫ ПО РАЗМЕРУ (ЛИМИТ 50 МБ) ==========
+async function roomCleanupBySize(roomId, maxSizeMB = 50) {
+    try {
+        const maxSizeBytes = maxSizeMB * 1024 * 1024; // 50 МБ в байтах
+        
+        // Получаем все сообщения комнаты
+        const messagesSnapshot = await db.ref(`rooms/${roomId}/messages`).once('value');
+        
+        if (!messagesSnapshot.exists()) {
+            console.log(`📭 Комната ${roomId} не содержит сообщений`);
+            return;
+        }
+        
+        // Собираем все сообщения комнаты с их размерами
+        const messages = [];
+        let totalSize = 0;
+        
+        messagesSnapshot.forEach((msgSnapshot) => {
+            const msg = msgSnapshot.val();
+            const size = getMessageSizeInBytes(msg);
+            
+            messages.push({
+                key: msgSnapshot.key,
+                timestamp: msg.ts || 0,
+                size: size,
+                msg: msg
+            });
+            
+            totalSize += size;
+        });
+        
+        const totalSizeMB = (totalSize / 1024 / 1024).toFixed(2);
+        console.log(`📊 Комната ${roomId}: ${messages.length} сообщений, ${totalSizeMB} МБ из ${maxSizeMB} МБ`);
+        
+        // Если превышен лимит комнаты
+        if (totalSize > maxSizeBytes) {
+            // Сортируем сообщения по времени (от старых к новым)
+            messages.sort((a, b) => a.timestamp - b.timestamp);
+            
+            const updates = {};
+            let sizeToRemove = totalSize - maxSizeBytes;
+            let removedSize = 0;
+            let removedCount = 0;
+            
+            console.log(`⚠️ Комната ${roomId}: превышение на ${(sizeToRemove/1024/1024).toFixed(2)} МБ. Удаляем старые сообщения...`);
+            
+            // Удаляем самые старые сообщения, пока не достигнем лимита
+            for (const msg of messages) {
+                if (removedSize >= sizeToRemove) break;
+                
+                updates[`rooms/${roomId}/messages/${msg.key}`] = null;
+                removedSize += msg.size;
+                removedCount++;
+            }
+            
+            if (removedCount > 0) {
+                await db.ref().update(updates);
+                const removedSizeMB = (removedSize/1024/1024).toFixed(2);
+                const newTotalMB = ((totalSize - removedSize)/1024/1024).toFixed(2);
+                
+                console.log(`🧹 Комната ${roomId}: удалено ${removedCount} старых сообщений (${removedSizeMB} МБ)`);
+                console.log(`📈 Теперь в комнате ${roomId}: ${newTotalMB} МБ`);
+                
+                // Показываем уведомление пользователю только для текущей комнаты
+                if (currentRoomId === roomId && typeof showStatus === 'function') {
+                    showStatus(`🧹 Комната: ${removedSizeMB} МБ очищено (${removedCount} сообщ.)`);
+                }
+            }
+        } else {
+            console.log(`✅ Комната ${roomId}: лимит не превышен (${totalSizeMB} МБ из ${maxSizeMB} МБ)`);
+        }
+    } catch (error) {
+        console.error(`❌ Ошибка очистки комнаты ${roomId}:`, error);
+    }
+}
+
+// ========== ПРОВЕРКА ВСЕХ КОМНАТ НА ПРЕВЫШЕНИЕ ЛИМИТА 50 МБ ==========
+async function checkAllRoomsSize() {
+    try {
+        const roomsSnapshot = await db.ref('rooms').once('value');
+        
+        if (!roomsSnapshot.exists()) {
+            console.log('Нет комнат для проверки');
+            return;
+        }
+        
+        const savedRooms = loadSavedRooms();
+        
+        // Проверяем только комнаты, сохраненные у пользователя
+        for (const roomId of Object.keys(savedRooms)) {
+            await roomCleanupBySize(roomId, 50);
+        }
+        
+    } catch (error) {
+        console.error('Ошибка проверки комнат:', error);
+    }
+}
             // Save/load rooms
             function saveRoom(roomId, keyBase64, name) {
                 const saved = JSON.parse(localStorage.getItem('e2ee_rooms') || '{}');
@@ -1616,7 +2023,7 @@ async function markMessagesAsDelivered(roomId) {
     if (!roomId) return;
     
     try {
-        console.log(`🔍 Проверка сообщений для доставки в комнате ${roomId}`);
+       
         
         const presenceSnap = await db.ref(`rooms/${roomId}/presence`).once('value');
         
@@ -1633,10 +2040,10 @@ async function markMessagesAsDelivered(roomId) {
             });
         }
         
-        console.log(`👥 Онлайн пользователи в комнате ${roomId}:`, Array.from(onlineUserIds));
+       
         
         if (!anyoneOnline) {
-            console.log(`📭 Нет никого онлайн в комнате, сообщения не помечаем`);
+            
             return;
         }
         
@@ -1655,13 +2062,13 @@ async function markMessagesAsDelivered(roomId) {
                     updates[`rooms/${roomId}/messages/${messageId}/delivered`] = true;
                     hasUpdates = true;
                     markedCount++;
-                    console.log(`📬 Помечаем сообщение ${messageId} от ${msg.from}`);
+                  
                 }
             });
             
             if (hasUpdates) {
                 await db.ref().update(updates);
-                console.log(`✅ Помечены как доставленные ${markedCount} сообщений в комнате ${roomId}`);
+                
                 
                 // Обновляем индикаторы после пометки сообщений
                 updateRoomMessageIndicators(roomId);
@@ -1671,7 +2078,7 @@ async function markMessagesAsDelivered(roomId) {
                 }
                 
                 if (currentRoomId === roomId && cryptoKey) {
-                    console.log('🔄 Обновляем UI после пометки сообщений');
+                    
                     
                     const scrollPos = messagesContainer.scrollTop;
                     const scrollHeight = messagesContainer.scrollHeight;
@@ -1717,6 +2124,109 @@ setInterval(() => {
                 }
             }
 
+
+
+            
+// Функция для установки ответа на сообщение
+function setReplyTo(messageId, messageText, messageFrom) {
+    const isOwn = messageFrom === userId;
+    let authorText;
+    if (isOwn) {
+        authorText = 'себя';
+    } else {
+        authorText = 'пользователя';
+    }
+    
+    replyToMessage = {
+        id: messageId,
+        text: messageText.substring(0, 50) + (messageText.length > 50 ? '...' : ''),
+        from: messageFrom,
+        authorName: authorText
+    };
+    
+    // Обновляем UI
+    replyAuthorName.textContent = authorText;
+    replyMessagePreview.textContent = replyToMessage.text;
+    replyPanel.style.display = 'flex';
+    
+    // Фокус на инпут
+    messageInput.focus();
+}
+
+// Функция для отмены ответа
+function cancelReply() {
+    replyToMessage = null;
+    replyPanel.style.display = 'none';
+}
+
+// Обновленная функция отправки сообщения с поддержкой ответов
+async function sendMessage(text) {
+    if (!currentRoomId || !cryptoKey || !text.trim()) return;
+
+    try {
+        const encrypted = await encryptMessage(text, cryptoKey);
+        
+        // Проверяем, есть ли кто-то онлайн в комнате КРОМЕ НАС
+        let otherOnlineCount = 0;
+        try {
+            const presenceSnap = await db.ref(`rooms/${currentRoomId}/presence`).once('value');
+            if (presenceSnap.exists()) {
+                const users = presenceSnap.val() || {};
+                otherOnlineCount = Object.entries(users)
+                    .filter(([id, data]) => id !== userId && data && data.online === true)
+                    .length;
+            }
+        } catch (e) {
+            console.error('Error checking presence on send:', e);
+        }
+        
+        // Сообщение считается доставленным, только если есть другие онлайн пользователи
+        const isDelivered = otherOnlineCount > 0;
+        
+       
+        
+        // Создаем объект сообщения
+        const messageObj = {
+            data: encrypted,
+            from: userId,
+            ts: Date.now(),
+            delivered: isDelivered
+        };
+        
+        // Если это ответ на сообщение - добавляем поле replyTo
+        if (replyToMessage) {
+            messageObj.replyTo = {
+                id: replyToMessage.id,
+                text: replyToMessage.text,
+                from: replyToMessage.from
+            };
+        }
+
+        const newMessageRef = await db.ref(`rooms/${currentRoomId}/messages`).push(messageObj);
+        
+        if (navigator.onLine) {
+
+        } else {
+            showStatus('📦 Сообщение сохранено и будет доставлено при подключении');
+        }
+        
+        messageInput.value = '';
+        
+        // Отменяем ответ после отправки
+        cancelReply();
+                const messageCount = parseInt(localStorage.getItem(`msg_count_${currentRoomId}`) || '0') + 1;
+        localStorage.setItem(`msg_count_${currentRoomId}`, messageCount.toString());
+        
+        if (messageCount % 10 === 0) {
+            console.log(`📊 Проверка размера комнаты ${currentRoomId} (после ${messageCount} сообщений)`);
+            await roomCleanupBySize(currentRoomId, 50);
+        }
+       
+    } catch (error) {
+        console.error('Send error:', error);
+        showStatus('Ошибка отправки', true);
+    }
+}
 function addRoomToUI(roomId, keyBase64, name, lastMsg = '', lastTime = Date.now()) {
     if (rooms.has(roomId)) return;
     
@@ -1828,7 +2338,7 @@ function addRoomToUI(roomId, keyBase64, name, lastMsg = '', lastTime = Date.now(
         try {
             // Удаляем присутствие из старой комнаты
             await db.ref(`rooms/${currentRoomId}/presence/${userId}`).remove();
-            console.log(`Удален из предыдущей комнаты ${currentRoomId}`);
+           
         } catch (error) {
             console.error('Error removing from previous room:', error);
         }
@@ -1854,7 +2364,8 @@ function addRoomToUI(roomId, keyBase64, name, lastMsg = '', lastTime = Date.now(
                 roomKeyShort.textContent = `${roomId}:${room.keyBase64.substring(0, 6)}...`;
 
                 messagesContainer.innerHTML = '';
-                
+                // Отменяем ответ при смене комнаты
+cancelReply();
                 // Load messages
                 try {
                     await loadMessages(roomId, cryptoKey);
@@ -1872,43 +2383,44 @@ function addRoomToUI(roomId, keyBase64, name, lastMsg = '', lastTime = Date.now(
                     saved[roomId].lastAccessed = Date.now();
                     localStorage.setItem('e2ee_rooms', JSON.stringify(saved));
                 }
+                
             }
 
-            // Load messages
-            async function loadMessages(roomId, key) {
-                try {
-                    const snapshot = await db.ref(`rooms/${roomId}/messages`).once('value');
-                    
-                    if (!snapshot || !snapshot.exists()) return;
+async function loadMessages(roomId, key) {
+    try {
+        const snapshot = await db.ref(`rooms/${roomId}/messages`).once('value');
+        
+        if (!snapshot || !snapshot.exists()) return;
 
-                    const messagesArray = [];
-                    snapshot.forEach((childSnapshot) => {
-                        const msg = childSnapshot.val();
-                        if (msg && msg.data) {
-                            messagesArray.push({
-                                id: childSnapshot.key,
-                                ...msg
-                            });
-                        }
-                    });
-                    
-                    messagesArray.sort((a, b) => (a.ts || 0) - (b.ts || 0));
-
-                    for (const msg of messagesArray) {
-                        if (msg.deleted) {
-                            // Не показываем удаленные сообщения
-                            continue;
-                        } else {
-                            const decrypted = await decryptMessage(msg.data, key);
-                            const isOwn = msg.from === userId;
-                            // Передаем статус delivered из Firebase
-                            addMessageToUI(decrypted, isOwn, msg.ts, msg.delivered || false, msg.id);
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error loading messages:', error);
-                }
+        const messagesArray = [];
+        snapshot.forEach((childSnapshot) => {
+            const msg = childSnapshot.val();
+            if (msg && msg.data) {
+                messagesArray.push({
+                    id: childSnapshot.key,
+                    ...msg
+                });
             }
+        });
+        
+        messagesArray.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+
+        for (const msg of messagesArray) {
+            if (msg.deleted) {
+                // Не показываем удаленные сообщения
+                continue;
+            } else {
+                const decrypted = await decryptMessage(msg.data, key);
+                const isOwn = msg.from === userId;
+                // Передаем from для чужих сообщений
+                addMessageToUI(decrypted, isOwn, msg.ts, msg.delivered || false, msg.id, msg.from, msg);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading messages:', error);
+    }
+}
+
 
 function setupMessagesListener(roomId, key) {
     messagesRef = db.ref(`rooms/${roomId}/messages`);
@@ -1929,11 +2441,11 @@ function setupMessagesListener(roomId, key) {
         
         const existingMessage = document.querySelector(`[data-message-id="${snapshot.key}"]`);
         if (!existingMessage) {
-            addMessageToUI(decrypted, isOwn, msg.ts, msg.delivered || false, snapshot.key);
+           addMessageToUI(decrypted, isOwn, msg.ts, msg.delivered || false, snapshot.key, msg.from, msg);
             
             // Если это чужое сообщение и мы онлайн - немедленно помечаем как доставленное
             if (!isOwn && !msg.delivered) {
-                console.log('📨 Новое чужое сообщение, помечаем как доставленное');
+                
                 const updates = {};
                 updates[`rooms/${roomId}/messages/${snapshot.key}/delivered`] = true;
                 await db.ref().update(updates);
@@ -1970,7 +2482,7 @@ function setupMessagesListener(roomId, key) {
                 const statusBadge = messageElement.querySelector('.delivery-status-badge');
                 if (statusBadge) {
                     statusBadge.innerHTML = ' <i class="fas fa-check-circle delivered" title="Доставлено"></i>';
-                    console.log(`✅ Обновлен статус сообщения ${snapshot.key} на доставлено`);
+                   
                 }
             }
         }
@@ -1990,76 +2502,139 @@ function setupMessagesListener(roomId, key) {
     });
 }
 
-            // Add message to UI
-            function addMessageToUI(text, isOwn, timestamp, isDelivered = false, messageId = null) {
-                const wrapper = document.createElement('div');
-                wrapper.className = `message-wrapper ${isOwn ? 'own' : 'other'}`;
-                
-                const contentDiv = document.createElement('div');
-                contentDiv.className = 'message-content';
-                
-                const msgEl = document.createElement('div');
-                msgEl.className = `message ${isOwn ? 'own' : 'other'}`;
-                msgEl.textContent = text;
-                if (messageId) {
-                    msgEl.dataset.messageId = messageId;
-                }
-                
-                const timeEl = document.createElement('div');
-                timeEl.className = 'message-time';
-                
-                const timeText = new Date(timestamp).toLocaleString([], { 
-    hour: '2-digit', 
-    minute: '2-digit',
-    day: 'numeric',
-    month: 'numeric'
-});
-                
-                timeEl.textContent = timeText;
-                
-                // Добавляем индикатор статуса доставки только для своих сообщений
-                if (isOwn) {
-                    const statusSpan = document.createElement('span');
-                    statusSpan.className = 'delivery-status-badge';
-                    
-                    if (isDelivered) {
-                        statusSpan.innerHTML = ' <i class="fas fa-check-circle delivered" title="Доставлено"></i>';
-                    } else {
-                        statusSpan.innerHTML = ' <i class="fas fa-clock pending" title="Ожидает доставки"></i>';
-                    }
-                    
-                    timeEl.appendChild(statusSpan);
-                }
-                
-                msgEl.appendChild(timeEl);
-                contentDiv.appendChild(msgEl);
-                
-                // Add delete button for own messages
-                if (isOwn && messageId) {
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.className = 'delete-message-btn';
-                    deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
-                    deleteBtn.title = 'Удалить сообщение';
-                    
-                    deleteBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        showConfirm(
-                            'Удалить сообщение?',
-                            'Вы уверены, что хотите удалить это сообщение для всех?',
-                            () => deleteMessage(messageId)
-                        );
-                    });
-                    
-                    contentDiv.appendChild(deleteBtn);
-                }
-                
-                wrapper.appendChild(contentDiv);
-                
-                messagesContainer.appendChild(wrapper);
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
+function addMessageToUI(text, isOwn, timestamp, isDelivered = false, messageId = null, messageFrom = null, msgData = null) {
+    const wrapper = document.createElement('div');
+    wrapper.className = `message-wrapper ${isOwn ? 'own' : 'other'}`;
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    
+    // Для чужих сообщений добавляем цветной индикатор пользователя
+    if (!isOwn && messageFrom) {
+        const userIndicator = document.createElement('div');
+        userIndicator.className = 'user-indicator';
+        userIndicator.style.backgroundColor = getUserColor(messageFrom);
+        userIndicator.title = `Пользователь: ${messageFrom.substring(0, 8)}...`;
+        contentDiv.appendChild(userIndicator);
+    }
+    
+    const msgEl = document.createElement('div');
+    msgEl.className = `message ${isOwn ? 'own' : 'other'}`;
+    msgEl.textContent = text;
+    if (messageId) {
+        msgEl.dataset.messageId = messageId;
+    }
+    
 
-// Функция отправки сообщения с полем delivered
+// Если это ответ на сообщение - показываем цитату
+if (msgData && msgData.replyTo) {
+    const replyQuote = document.createElement('div');
+    replyQuote.className = 'reply-quote';
+    
+    const replyAuthorSpan = document.createElement('div');
+    replyAuthorSpan.className = 'reply-quote-author';
+    
+    const isReplyToOwn = msgData.replyTo.from === userId;
+let replyAuthorText;
+
+if (isReplyToOwn) {
+    replyAuthorText = 'себя';
+    replyAuthorSpan.style.color = '#ffffff'; // белый для своих
+} else {
+    replyAuthorText = 'пользователя';
+    // Получаем цвет пользователя
+    const userColor = getUserColor(msgData.replyTo.from);
+    replyAuthorSpan.style.color = userColor;
+}
+
+replyAuthorSpan.innerHTML = `<i class="fas fa-reply"></i> ${replyAuthorText}`;
+replyAuthorSpan.style.fontWeight = '500';
+    
+    const replyTextSpan = document.createElement('div');
+    replyTextSpan.className = 'reply-quote-text';
+    replyTextSpan.textContent = msgData.replyTo.text;
+    
+    replyQuote.appendChild(replyAuthorSpan);
+    replyQuote.appendChild(replyTextSpan);
+    
+    msgEl.insertBefore(replyQuote, msgEl.firstChild);
+}
+
+
+    const timeEl = document.createElement('div');
+    timeEl.className = 'message-time';
+    
+    const timeText = new Date(timestamp).toLocaleString([], { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        day: 'numeric',
+        month: 'numeric'
+    });
+    
+    timeEl.textContent = timeText;
+    
+    // Добавляем индикатор статуса доставки только для своих сообщений
+    if (isOwn) {
+        const statusSpan = document.createElement('span');
+        statusSpan.className = 'delivery-status-badge';
+        
+        if (isDelivered) {
+            statusSpan.innerHTML = ' <i class="fas fa-check-circle delivered" title="Доставлено"></i>';
+        } else {
+            statusSpan.innerHTML = ' <i class="fas fa-clock pending" title="Ожидает доставки"></i>';
+        }
+        
+        timeEl.appendChild(statusSpan);
+    }
+    
+    msgEl.appendChild(timeEl);
+    contentDiv.appendChild(msgEl);
+    
+ // Создаем контейнер для кнопок действий
+const actionsContainer = document.createElement('div');
+actionsContainer.style.display = 'flex';
+actionsContainer.style.gap = '4px';
+
+// Кнопка ответа (для всех сообщений)
+const replyBtn = document.createElement('button');
+replyBtn.className = 'reply-message-btn';
+replyBtn.innerHTML = '<i class="fas fa-reply"></i>';
+replyBtn.title = 'Ответить';
+
+replyBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setReplyTo(messageId, text, messageFrom);
+});
+
+actionsContainer.appendChild(replyBtn);
+
+// Кнопка удаления (только для своих)
+if (isOwn && messageId) {
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'delete-message-btn';
+    deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+    deleteBtn.title = 'Удалить сообщение';
+    
+    deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showConfirm(
+            'Удалить сообщение?',
+            'Вы уверены, что хотите удалить это сообщение для всех?',
+            () => deleteMessage(messageId)
+        );
+    });
+    
+    actionsContainer.appendChild(deleteBtn);
+}
+
+contentDiv.appendChild(actionsContainer);
+
+    wrapper.appendChild(contentDiv);
+    
+    messagesContainer.appendChild(wrapper);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+// Обновленная функция отправки сообщения с поддержкой ответов
 async function sendMessage(text) {
     if (!currentRoomId || !cryptoKey || !text.trim()) return;
 
@@ -2083,28 +2658,38 @@ async function sendMessage(text) {
         // Сообщение считается доставленным, только если есть другие онлайн пользователи
         const isDelivered = otherOnlineCount > 0;
         
-        console.log(`📤 Отправка сообщения: доставлено=${isDelivered}, других онлайн=${otherOnlineCount}`);
         
+        
+        // Создаем объект сообщения
         const messageObj = {
             data: encrypted,
             from: userId,
             ts: Date.now(),
             delivered: isDelivered
         };
+        
+        // Если это ответ на сообщение - добавляем поле replyTo
+        if (replyToMessage) {
+            messageObj.replyTo = {
+                id: replyToMessage.id,
+                text: replyToMessage.text,
+                from: replyToMessage.from
+            };
+        }
 
         const newMessageRef = await db.ref(`rooms/${currentRoomId}/messages`).push(messageObj);
         
         if (navigator.onLine) {
-            if (isDelivered) {
-                showStatus('✅ Сообщение доставлено');
-            } else {
-                showStatus('📤 Сообщение отправлено (ожидает доставки)');
-            }
+
         } else {
             showStatus('📦 Сообщение сохранено и будет доставлено при подключении');
         }
         
         messageInput.value = '';
+        
+        // Отменяем ответ после отправки
+        cancelReply();
+        
     } catch (error) {
         console.error('Send error:', error);
         showStatus('Ошибка отправки', true);
@@ -2190,14 +2775,14 @@ function setupRoomPresence(roomId) {
                 
                 const onlineCount = allUsers.length;
                 
-                console.log(`👥 Комната ${roomId}: ${onlineCount} всего онлайн`);
+               
                 
                 // Обновляем статус для этой комнаты
                 onlineStatusInRooms.set(roomId, onlineCount > 0);
                 
                 // ВАЖНО: Если есть хоть кто-то онлайн (включая нас самих)
                 if (onlineCount > 0) {
-                    console.log('🎯 Есть пользователи в комнате, проверяем сообщения на доставку');
+                    
                     
                     // Помечаем сообщения как доставленные
                     await markMessagesAsDelivered(roomId);
@@ -2225,7 +2810,7 @@ function setupRoomPresence(roomId) {
                         .catch(error => console.error('Error updating global presence:', error));
                 }
             } else {
-                console.log(`👻 Никого нет в комнате ${roomId}`);
+               
                 roomOnlineCount.textContent = '0';
                 onlineStatusInRooms.set(roomId, false);
                 peerStatus.innerHTML = '<i class="fas fa-circle"></i> не в сети';
@@ -2309,6 +2894,15 @@ function setupRoomPresence(roomId) {
                 }
             });
 
+            // Закрыть панель ответа
+closeReplyBtn.addEventListener('click', cancelReply);
+
+// При вводе нового сообщения (если пользователь начинает печатать что-то другое, ответ не отменяется)
+messageInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        cancelReply();
+    }
+});
 
 // ИНИЦИАЛИЗАЦИЯ С ГЛОБАЛЬНОЙ ОЧИСТКОЙ (БЕЗ loadPendingMessages)
 async function initialize() {
@@ -2337,15 +2931,21 @@ async function initialize() {
         // 1. Никогда не было очистки
         // 2. Прошло больше 24 часов с последней очистки
         if (!lastGlobalCleanup || now - parseInt(lastGlobalCleanup) > 86400000) { // 24 часа
-            console.log('🕐 Запуск плановой глобальной очистки (раз в 24 часа)');
+           
             await globalCleanupBySize(900); // 900 МБ лимит
             localStorage.setItem('global_cleanup_900mb', now.toString());
         } else {
             const hoursLeft = Math.round((86400000 - (now - parseInt(lastGlobalCleanup))) / 3600000);
-            console.log(`⏳ Следующая очистка через ${hoursLeft} часов`);
+            
         }
         // ===================================================
+                const lastRoomsCleanup = localStorage.getItem('rooms_cleanup_50mb');
         
+        if (!lastRoomsCleanup || now - parseInt(lastRoomsCleanup) > 3600000) { // Каждый час
+            console.log('🔄 Запуск проверки комнат (лимит 50 МБ)...');
+            await checkAllRoomsSize();
+            localStorage.setItem('rooms_cleanup_50mb', now.toString());
+        }
         // Setup global presence
         if (typeof setupGlobalPresence === 'function') {
             setupGlobalPresence();
@@ -2389,7 +2989,7 @@ document.addEventListener('mousedown', (e) => {
     if (window.innerWidth <= 768) {
         if (e.target.closest('.sidebar') || e.target.closest('.sidebar-overlay')) {
             e.stopPropagation();
-            console.log('Блокируем закрытие');
+           
         }
     }
 }, true);
@@ -2398,7 +2998,7 @@ document.addEventListener('touchstart', (e) => {
     if (window.innerWidth <= 768) {
         if (e.target.closest('.sidebar') || e.target.closest('.sidebar-overlay')) {
             e.stopPropagation();
-            console.log('Блокируем закрытие');
+            
         }
     }
 }, true);
