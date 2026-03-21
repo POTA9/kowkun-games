@@ -11,7 +11,7 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
         }
 
         :root {
@@ -1569,42 +1569,23 @@ const closeReplyBtn = document.getElementById('closeReplyBtn');
 
 
 
-            // Добавьте эту функцию в начало скрипта (после генерации userId)
 function getUserColor(userId) {
-    // Используем userId для генерации стабильного цвета
     let hash = 0;
     for (let i = 0; i < userId.length; i++) {
         hash = ((hash << 5) - hash) + userId.charCodeAt(i);
         hash = hash & hash;
     }
     
-    // Список ярких, хорошо различимых цветов
-    const colors = [
-        '#FF6B6B', // красный
-        '#4AE9A0', // зеленый
-        '#5D4EF0', // фиолетовый
-        '#FFAA00', // оранжевый
-        '#FF8C8C', // светло-красный
-        '#6B5BFF', // синий
-        '#FF69B4', // розовый
-        '#00D68F', // бирюзовый
-        '#FFB347', // желто-оранжевый
-        '#A35CFF', // лавандовый
-        '#FF7F50', // коралловый
-        '#20B2AA', // светло-морской
-        '#9370DB', // средне-фиолетовый
-        '#FFA07A', // светло-лососевый
-        '#3CB371', // морской зеленый
-        '#FF6347', // томатный
-        '#BA55D3', // средне-орхидейный
-        '#40E0D0', // бирюзовый
-        '#FFD700', // золотой
-        '#98FB98'  // бледно-зеленый
-    ];
+    // Hue (оттенок) - 0-360, берем из хеша
+    const hue = Math.abs(hash) % 360;
     
-    // Берем абсолютное значение хеша и получаем индекс
-    const index = Math.abs(hash) % colors.length;
-    return colors[index];
+    // Saturation (насыщенность) - 65-85%, яркие цвета
+    const saturation = 65 + (Math.abs(hash * 13) % 21);
+    
+    // Lightness (яркость) - 55-70%, хорошо видно на темном фоне
+    const lightness = 55 + (Math.abs(hash * 17) % 16);
+    
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 }
 
 
@@ -2634,67 +2615,7 @@ contentDiv.appendChild(actionsContainer);
     messagesContainer.appendChild(wrapper);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
-// Обновленная функция отправки сообщения с поддержкой ответов
-async function sendMessage(text) {
-    if (!currentRoomId || !cryptoKey || !text.trim()) return;
 
-    try {
-        const encrypted = await encryptMessage(text, cryptoKey);
-        
-        // Проверяем, есть ли кто-то онлайн в комнате КРОМЕ НАС
-        let otherOnlineCount = 0;
-        try {
-            const presenceSnap = await db.ref(`rooms/${currentRoomId}/presence`).once('value');
-            if (presenceSnap.exists()) {
-                const users = presenceSnap.val() || {};
-                otherOnlineCount = Object.entries(users)
-                    .filter(([id, data]) => id !== userId && data && data.online === true)
-                    .length;
-            }
-        } catch (e) {
-            console.error('Error checking presence on send:', e);
-        }
-        
-        // Сообщение считается доставленным, только если есть другие онлайн пользователи
-        const isDelivered = otherOnlineCount > 0;
-        
-        
-        
-        // Создаем объект сообщения
-        const messageObj = {
-            data: encrypted,
-            from: userId,
-            ts: Date.now(),
-            delivered: isDelivered
-        };
-        
-        // Если это ответ на сообщение - добавляем поле replyTo
-        if (replyToMessage) {
-            messageObj.replyTo = {
-                id: replyToMessage.id,
-                text: replyToMessage.text,
-                from: replyToMessage.from
-            };
-        }
-
-        const newMessageRef = await db.ref(`rooms/${currentRoomId}/messages`).push(messageObj);
-        
-        if (navigator.onLine) {
-
-        } else {
-            showStatus('📦 Сообщение сохранено и будет доставлено при подключении');
-        }
-        
-        messageInput.value = '';
-        
-        // Отменяем ответ после отправки
-        cancelReply();
-        
-    } catch (error) {
-        console.error('Send error:', error);
-        showStatus('Ошибка отправки', true);
-    }
-}
 
             // Global presence setup
             function setupGlobalPresence() {
@@ -2850,17 +2771,28 @@ function setupRoomPresence(roomId) {
 
             // Event: Join room
             joinRoomBtn.addEventListener('click', async () => {
-                const fullKey = joinKeyInput.value.trim();
-                if (!fullKey) {
-                    showStatus('Введите ключ', true);
-                    return;
-                }
+ let fullKey = joinKeyInput.value.trim();
+    if (!fullKey) {
+        showStatus('Введите ключ', true);
+        return;
+    }
 
-                const [roomId, keyBase64] = fullKey.split(':');
-                if (!roomId || !keyBase64) {
-                    showStatus('Неверный формат ключа', true);
-                    return;
-                }
+    // Преобразуем первую часть (ID комнаты) в верхний регистр
+    const parts = fullKey.split(':');
+    if (parts.length >= 2) {
+        const roomId = parts[0].toUpperCase(); // ID комнаты в верхний регистр
+        const keyBase64 = parts[1];
+        fullKey = `${roomId}:${keyBase64}`;
+        
+        // Обновляем поле ввода для наглядности
+        joinKeyInput.value = fullKey;
+    }
+
+    const [roomId, keyBase64] = fullKey.split(':');
+    if (!roomId || !keyBase64) {
+        showStatus('Неверный формат ключа', true);
+        return;
+    }
 
                 try {
                     await importKey(keyBase64);
