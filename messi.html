@@ -1275,6 +1275,43 @@
         font-size: 0.85rem;
     }
 }
+
+/* Добавьте в конец секции <style> */
+.load-more-container {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+    width: 100%;
+}
+
+.load-more-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--accent);
+    color: var(--text-primary);
+    padding: 12px 24px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.load-more-btn:hover {
+    background: var(--accent);
+    transform: translateY(-2px);
+}
+
+.load-more-btn:active {
+    transform: translateY(0);
+}
+
+.load-more-btn i {
+    font-size: 1rem;
+}
+
+
     </style>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
@@ -1404,6 +1441,13 @@
             let userId = generateUserId();
 // Состояние для ответа на сообщение
 let replyToMessage = null; // { id, text, from, authorName }
+let roomsState = new Map();
+// Добавьте эти переменные в начало скрипта, после других let переменных
+let currentLastTimestamp = null; // Для хранения временной метки последнего загруженного сообщения
+let isLoadingMore = false; // Флаг загрузки
+let hasMoreMessages = true; // Флаг наличия ещё сообщений
+let allMessagesLoaded = false; // Флаг загрузки всех сообщений
+let loadMoreButton = null; // Кнопка загрузки
 
 // DOM элементы для ответа
 const replyPanel = document.getElementById('replyPanel');
@@ -1444,6 +1488,18 @@ const closeReplyBtn = document.getElementById('closeReplyBtn');
 
 
 
+function hideLoadMoreButton() {
+    if (loadMoreButton) {
+        loadMoreButton.style.display = 'none';
+    }
+}
+
+// Функция для показа кнопки
+function showLoadMoreButton() {
+    if (loadMoreButton) {
+        loadMoreButton.style.display = 'flex';
+    }
+}
 
             function updateRoomMessageIndicators(roomId) {
     const roomItem = document.querySelector(`.room-item[data-room-id="${roomId}"]`);
@@ -2321,72 +2377,145 @@ function addRoomToUI(roomId, keyBase64, name, lastMsg = '', lastTime = Date.now(
 }
 
 
-            // Switch room
-            async function switchRoom(roomId) {
-                const room = rooms.get(roomId);
-                if (!room) return;
+async function switchRoom(roomId) {
+    const room = rooms.get(roomId);
+    if (!room) return;
+    
     if (currentRoomId) {
         try {
-            // Удаляем присутствие из старой комнаты
+            // Сохраняем состояние текущей комнаты
+            if (currentRoomId && cryptoKey) {
+                roomsState.set(currentRoomId, {
+                    lastTimestamp: currentLastTimestamp,
+                    hasMore: hasMoreMessages,
+                    allLoaded: allMessagesLoaded
+                });
+            }
+            
             await db.ref(`rooms/${currentRoomId}/presence/${userId}`).remove();
-           
         } catch (error) {
             console.error('Error removing from previous room:', error);
         }
     }
-                // Clean up old listeners
-                if (messagesRef) messagesRef.off();
-                if (peerPresenceRef) peerPresenceRef.off();
-                if (roomPresenceRef) roomPresenceRef.off();
-                if (currentMessagesListener) currentMessagesListener();
+    
+    // Clean up old listeners
+    if (messagesRef) messagesRef.off();
+    if (peerPresenceRef) peerPresenceRef.off();
+    if (roomPresenceRef) roomPresenceRef.off();
+    if (currentMessagesListener) currentMessagesListener();
 
-                currentRoomId = roomId;
-                cryptoKey = await importKey(room.keyBase64);
+    currentRoomId = roomId;
+    cryptoKey = await importKey(room.keyBase64);
+    
+    // Восстанавливаем состояние для новой комнаты или создаём новое
+    const savedState = roomsState.get(roomId);
+    if (savedState) {
+        currentLastTimestamp = savedState.lastTimestamp;
+        hasMoreMessages = savedState.hasMore;
+        allMessagesLoaded = savedState.allLoaded;
+    } else {
+        currentLastTimestamp = null;
+        hasMoreMessages = true;
+        allMessagesLoaded = false;
+    }
+    
+    // Удаляем старую кнопку
+    if (loadMoreButton) {
+        loadMoreButton.remove();
+        loadMoreButton = null;
+    }
 
-                // Update UI
-                document.querySelectorAll('.room-item').forEach(el => {
-                    el.classList.toggle('active', el.dataset.roomId === roomId);
-                });
+    // Update UI
+    document.querySelectorAll('.room-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.roomId === roomId);
+    });
 
-                chatHeader.style.display = 'flex';
-                inputArea.style.display = 'flex';
-                emptyState.style.display = 'none';
-                currentRoomName.textContent = room.name || `Комната ${roomId}`;
-                roomKeyShort.textContent = `${roomId}:${room.keyBase64.substring(0, 6)}...`;
+    chatHeader.style.display = 'flex';
+    inputArea.style.display = 'flex';
+    emptyState.style.display = 'none';
+    currentRoomName.textContent = room.name || `Комната ${roomId}`;
+    roomKeyShort.textContent = `${roomId}:${room.keyBase64.substring(0, 6)}...`;
 
-                messagesContainer.innerHTML = '';
-                // Отменяем ответ при смене комнаты
-cancelReply();
-                // Load messages
-                try {
-                    await loadMessages(roomId, cryptoKey);
-                } catch (error) {
-                    console.error('Error loading messages:', error);
-                }
-                
-                // Setup real-time listeners
-                setupMessagesListener(roomId, cryptoKey);
-                setupRoomPresence(roomId);
-
-                // Update last accessed
-                const saved = loadSavedRooms();
-                if (saved[roomId]) {
-                    saved[roomId].lastAccessed = Date.now();
-                    localStorage.setItem('e2ee_rooms', JSON.stringify(saved));
-                }
-                
-            }
-
-async function loadMessages(roomId, key) {
+    messagesContainer.innerHTML = '';
+    cancelReply();
+    
+    // Load messages
     try {
-        const snapshot = await db.ref(`rooms/${roomId}/messages`).once('value');
-        
-        if (!snapshot || !snapshot.exists()) return;
+        await loadMessages(roomId, cryptoKey, false);
+    } catch (error) {
+        console.error('Error loading messages:', error);
+    }
+    
+    // Setup real-time listeners
+    setupMessagesListener(roomId, cryptoKey);
+    setupRoomPresence(roomId);
 
+    // Update last accessed
+    const saved = loadSavedRooms();
+    if (saved[roomId]) {
+        saved[roomId].lastAccessed = Date.now();
+        localStorage.setItem('e2ee_rooms', JSON.stringify(saved));
+    }
+}
+
+async function loadMessages(roomId, key, loadMore = false) {
+    try {
+        if (isLoadingMore) return;
+        
+        if (!loadMore) {
+            // Первая загрузка - очищаем контейнер и сбрасываем состояние
+            messagesContainer.innerHTML = '';
+            
+            // Сбрасываем состояние для этой комнаты
+            currentLastTimestamp = null;
+            hasMoreMessages = true;
+            allMessagesLoaded = false;
+            
+            if (loadMoreButton) {
+                loadMoreButton.remove();
+                loadMoreButton = null;
+            }
+        }
+        
+        isLoadingMore = true;
+        
+        // Строим запрос с лимитом 30 сообщений
+        let query = db.ref(`rooms/${roomId}/messages`).orderByChild('ts').limitToLast(30);
+        
+        // Если загружаем ещё и есть timestamp для пагинации
+        if (loadMore && currentLastTimestamp) {
+            query = db.ref(`rooms/${roomId}/messages`)
+                .orderByChild('ts')
+                .endAt(currentLastTimestamp - 1)
+                .limitToLast(30);
+        }
+        
+        const snapshot = await query.once('value');
+        
+        if (!snapshot || !snapshot.exists()) {
+            hasMoreMessages = false;
+            allMessagesLoaded = true;
+            isLoadingMore = false;
+            
+            if (loadMore && loadMoreButton) {
+                loadMoreButton.remove();
+                loadMoreButton = null;
+            }
+            
+            // Сохраняем состояние
+            roomsState.set(roomId, {
+                lastTimestamp: currentLastTimestamp,
+                hasMore: hasMoreMessages,
+                allLoaded: allMessagesLoaded
+            });
+            
+            return;
+        }
+        
         const messagesArray = [];
         snapshot.forEach((childSnapshot) => {
             const msg = childSnapshot.val();
-            if (msg && msg.data) {
+            if (msg && msg.data && !msg.deleted) {
                 messagesArray.push({
                     id: childSnapshot.key,
                     ...msg
@@ -2394,24 +2523,90 @@ async function loadMessages(roomId, key) {
             }
         });
         
+        // Сортируем по времени (старые внизу для правильного отображения)
         messagesArray.sort((a, b) => (a.ts || 0) - (b.ts || 0));
-
-        for (const msg of messagesArray) {
-            if (msg.deleted) {
-                // Не показываем удаленные сообщения
-                continue;
-            } else {
+        
+        // Если загружено меньше 30 сообщений, значит больше нет
+        if (messagesArray.length < 30) {
+            hasMoreMessages = false;
+            allMessagesLoaded = true;
+        }
+        
+        // Сохраняем timestamp самого старого загруженного сообщения
+        if (messagesArray.length > 0) {
+            currentLastTimestamp = messagesArray[0].ts;
+        }
+        
+        // Сохраняем состояние после загрузки
+        roomsState.set(roomId, {
+            lastTimestamp: currentLastTimestamp,
+            hasMore: hasMoreMessages,
+            allLoaded: allMessagesLoaded
+        });
+        
+        if (loadMore) {
+            // Загружаем старые сообщения - сохраняем позицию
+            const oldScrollHeight = messagesContainer.scrollHeight;
+            const oldScrollTop = messagesContainer.scrollTop;
+            
+            // Вставляем в начало (сохраняя порядок)
+            const tempContainer = document.createElement('div');
+            
+            for (const msg of messagesArray) {
                 const decrypted = await decryptMessage(msg.data, key);
                 const isOwn = msg.from === userId;
-                // Передаем from для чужих сообщений
+                const messageElement = createMessageElement(
+                    decrypted, isOwn, msg.ts, msg.delivered || false,
+                    msg.id, msg.from, msg
+                );
+                tempContainer.appendChild(messageElement);
+            }
+            
+            const children = tempContainer.children;
+            for (let i = children.length - 1; i >= 0; i--) {
+                if (loadMoreButton && messagesContainer.contains(loadMoreButton)) {
+                    messagesContainer.insertBefore(children[i], loadMoreButton);
+                } else {
+                    messagesContainer.insertBefore(children[i], messagesContainer.firstChild);
+                }
+            }
+            
+            // Восстанавливаем прокрутку
+            const newScrollHeight = messagesContainer.scrollHeight;
+            const heightDiff = newScrollHeight - oldScrollHeight;
+            messagesContainer.scrollTop = oldScrollTop + heightDiff;
+            
+        } else {
+            // Первая загрузка - просто добавляем в конец
+            for (const msg of messagesArray) {
+                const decrypted = await decryptMessage(msg.data, key);
+                const isOwn = msg.from === userId;
                 addMessageToUI(decrypted, isOwn, msg.ts, msg.delivered || false, msg.id, msg.from, msg);
             }
+            
+            // Скроллим вниз
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
+        
+        // Добавляем или удаляем кнопку
+        if (hasMoreMessages && !allMessagesLoaded) {
+            if (!loadMoreButton) {
+                addLoadMoreButton();
+            }
+        } else {
+            if (loadMoreButton) {
+                loadMoreButton.remove();
+                loadMoreButton = null;
+            }
+        }
+        
+        isLoadingMore = false;
+        
     } catch (error) {
         console.error('Error loading messages:', error);
+        isLoadingMore = false;
     }
 }
-
 
 function setupMessagesListener(roomId, key) {
     messagesRef = db.ref(`rooms/${roomId}/messages`);
@@ -2421,41 +2616,53 @@ function setupMessagesListener(roomId, key) {
     }
     
     // Слушаем новые сообщения
-    currentMessagesListener = messagesRef.on('child_added', async (snapshot) => {
-        if (!snapshot || !snapshot.exists()) return;
-        
-        const msg = snapshot.val();
-        if (!msg || !msg.data || msg.deleted) return;
-        
-        const isOwn = msg.from === userId;
-        const decrypted = await decryptMessage(msg.data, key);
-        
-        const existingMessage = document.querySelector(`[data-message-id="${snapshot.key}"]`);
-        if (!existingMessage) {
-           addMessageToUI(decrypted, isOwn, msg.ts, msg.delivered || false, snapshot.key, msg.from, msg);
-            
-            // Если это чужое сообщение и мы онлайн - немедленно помечаем как доставленное
-            if (!isOwn && !msg.delivered) {
-                
-                const updates = {};
-                updates[`rooms/${roomId}/messages/${snapshot.key}/delivered`] = true;
-                await db.ref().update(updates);
-            }
-        }
-        
-        // Обновляем индикаторы для комнаты
-        updateRoomMessageIndicators(roomId);
-        
-        // Update last message in room list
-        const roomItem = document.querySelector(`.room-item[data-room-id="${roomId}"] .room-last-message`);
-        const roomTime = document.querySelector(`.room-item[data-room-id="${roomId}"] .room-time`);
-        if (roomItem) {
-            roomItem.textContent = decrypted.substring(0, 30) + (decrypted.length > 30 ? '...' : '');
-        }
-        if (roomTime) {
-            roomTime.textContent = new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        }
-    });
+// В функции setupMessagesListener, внутри обработчика child_added
+// Замените addMessageToUI на добавление в конец, если сообщение новое
+currentMessagesListener = messagesRef.on('child_added', async (snapshot) => {
+    if (!snapshot || !snapshot.exists()) return;
+    
+    const msg = snapshot.val();
+    if (!msg || !msg.data || msg.deleted) return;
+    
+    // Проверяем, не загружено ли уже это сообщение
+    const existingMessage = document.querySelector(`[data-message-id="${snapshot.key}"]`);
+    if (existingMessage) return;
+    
+    const isOwn = msg.from === userId;
+    const decrypted = await decryptMessage(msg.data, key);
+    
+    // Если это новое сообщение (timestamp больше последнего загруженного)
+    // добавляем в конец
+    if (!currentLastTimestamp || msg.ts > currentLastTimestamp) {
+        addMessageToUI(decrypted, isOwn, msg.ts, msg.delivered || false, snapshot.key, msg.from, msg);
+    } else {
+        // Если старое сообщение (из истории) - не добавляем
+        return;
+    }
+    
+    // Остальная логика...
+    if (!isOwn && !msg.delivered) {
+        const updates = {};
+        updates[`rooms/${roomId}/messages/${snapshot.key}/delivered`] = true;
+        await db.ref().update(updates);
+    }
+    
+    updateRoomMessageIndicators(roomId);
+    
+    // Обновляем последнее сообщение в списке комнат
+    const roomItem = document.querySelector(`.room-item[data-room-id="${roomId}"] .room-last-message`);
+    const roomTime = document.querySelector(`.room-item[data-room-id="${roomId}"] .room-time`);
+    if (roomItem) {
+        roomItem.textContent = decrypted.substring(0, 30) + (decrypted.length > 30 ? '...' : '');
+    }
+    if (roomTime) {
+        roomTime.textContent = new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    if (loadMoreButton && messagesContainer.scrollTop > 100) {
+    loadMoreButton.style.display = 'none';
+}
+});
     
     // Слушаем изменения сообщений
     messagesRef.on('child_changed', (snapshot) => {
@@ -2493,14 +2700,18 @@ function setupMessagesListener(roomId, key) {
     });
 }
 
-function addMessageToUI(text, isOwn, timestamp, isDelivered = false, messageId = null, messageFrom = null, msgData = null) {
+// ========== ФУНКЦИЯ СОЗДАНИЯ ЭЛЕМЕНТА СООБЩЕНИЯ ==========
+// Эта функция только создаёт DOM-элемент сообщения, но НЕ добавляет его на страницу
+function createMessageElement(text, isOwn, timestamp, isDelivered, messageId, messageFrom, msgData) {
+    // Создаём обёртку сообщения (своё справа, чужое слева)
     const wrapper = document.createElement('div');
     wrapper.className = `message-wrapper ${isOwn ? 'own' : 'other'}`;
     
+    // Контейнер для содержимого сообщения
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
     
-    // Для чужих сообщений добавляем цветной индикатор пользователя
+    // ----- ИНДИКАТОР ПОЛЬЗОВАТЕЛЯ (только для чужих сообщений) -----
     if (!isOwn && messageFrom) {
         const userIndicator = document.createElement('div');
         userIndicator.className = 'user-indicator';
@@ -2509,6 +2720,7 @@ function addMessageToUI(text, isOwn, timestamp, isDelivered = false, messageId =
         contentDiv.appendChild(userIndicator);
     }
     
+    // ----- ОСНОВНОЙ БЛОК СООБЩЕНИЯ -----
     const msgEl = document.createElement('div');
     msgEl.className = `message ${isOwn ? 'own' : 'other'}`;
     msgEl.textContent = text;
@@ -2516,42 +2728,42 @@ function addMessageToUI(text, isOwn, timestamp, isDelivered = false, messageId =
         msgEl.dataset.messageId = messageId;
     }
     
-
-// Если это ответ на сообщение - показываем цитату
-if (msgData && msgData.replyTo) {
-    const replyQuote = document.createElement('div');
-    replyQuote.className = 'reply-quote';
+    // ----- ЦИТАТА (если это ответ на другое сообщение) -----
+    if (msgData && msgData.replyTo) {
+        const replyQuote = document.createElement('div');
+        replyQuote.className = 'reply-quote';
+        
+        const replyAuthorSpan = document.createElement('div');
+        replyAuthorSpan.className = 'reply-quote-author';
+        
+        // Определяем, кому принадлежит цитируемое сообщение
+        const isReplyToOwn = msgData.replyTo.from === userId;
+        let replyAuthorText;
+        
+        if (isReplyToOwn) {
+            replyAuthorText = 'себя';
+            replyAuthorSpan.style.color = '#ffffff'; // белый для цитаты себя
+        } else {
+            replyAuthorText = 'пользователя';
+            const userColor = getUserColor(msgData.replyTo.from);
+            replyAuthorSpan.style.color = userColor; // цвет пользователя
+        }
+        
+        replyAuthorSpan.innerHTML = `<i class="fas fa-reply"></i> ${replyAuthorText}`;
+        replyAuthorSpan.style.fontWeight = '500';
+        
+        const replyTextSpan = document.createElement('div');
+        replyTextSpan.className = 'reply-quote-text';
+        replyTextSpan.textContent = msgData.replyTo.text;
+        
+        replyQuote.appendChild(replyAuthorSpan);
+        replyQuote.appendChild(replyTextSpan);
+        
+        // Вставляем цитату в начало сообщения
+        msgEl.insertBefore(replyQuote, msgEl.firstChild);
+    }
     
-    const replyAuthorSpan = document.createElement('div');
-    replyAuthorSpan.className = 'reply-quote-author';
-    
-    const isReplyToOwn = msgData.replyTo.from === userId;
-let replyAuthorText;
-
-if (isReplyToOwn) {
-    replyAuthorText = 'себя';
-    replyAuthorSpan.style.color = '#ffffff'; // белый для своих
-} else {
-    replyAuthorText = 'пользователя';
-    // Получаем цвет пользователя
-    const userColor = getUserColor(msgData.replyTo.from);
-    replyAuthorSpan.style.color = userColor;
-}
-
-replyAuthorSpan.innerHTML = `<i class="fas fa-reply"></i> ${replyAuthorText}`;
-replyAuthorSpan.style.fontWeight = '500';
-    
-    const replyTextSpan = document.createElement('div');
-    replyTextSpan.className = 'reply-quote-text';
-    replyTextSpan.textContent = msgData.replyTo.text;
-    
-    replyQuote.appendChild(replyAuthorSpan);
-    replyQuote.appendChild(replyTextSpan);
-    
-    msgEl.insertBefore(replyQuote, msgEl.firstChild);
-}
-
-
+    // ----- ВРЕМЯ СООБЩЕНИЯ -----
     const timeEl = document.createElement('div');
     timeEl.className = 'message-time';
     
@@ -2564,7 +2776,7 @@ replyAuthorSpan.style.fontWeight = '500';
     
     timeEl.textContent = timeText;
     
-    // Добавляем индикатор статуса доставки только для своих сообщений
+    // ----- СТАТУС ДОСТАВКИ (только для своих сообщений) -----
     if (isOwn) {
         const statusSpan = document.createElement('span');
         statusSpan.className = 'delivery-status-badge';
@@ -2581,49 +2793,67 @@ replyAuthorSpan.style.fontWeight = '500';
     msgEl.appendChild(timeEl);
     contentDiv.appendChild(msgEl);
     
- // Создаем контейнер для кнопок действий
-const actionsContainer = document.createElement('div');
-actionsContainer.style.display = 'flex';
-actionsContainer.style.gap = '4px';
-
-// Кнопка ответа (для всех сообщений)
-const replyBtn = document.createElement('button');
-replyBtn.className = 'reply-message-btn';
-replyBtn.innerHTML = '<i class="fas fa-reply"></i>';
-replyBtn.title = 'Ответить';
-
-replyBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    setReplyTo(messageId, text, messageFrom);
-});
-
-actionsContainer.appendChild(replyBtn);
-
-// Кнопка удаления (только для своих)
-if (isOwn && messageId) {
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'delete-message-btn';
-    deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
-    deleteBtn.title = 'Удалить сообщение';
+    // ----- КНОПКИ ДЕЙСТВИЙ -----
+    const actionsContainer = document.createElement('div');
+    actionsContainer.style.display = 'flex';
+    actionsContainer.style.gap = '4px';
     
-    deleteBtn.addEventListener('click', (e) => {
+    // Кнопка "Ответить" (для всех сообщений)
+    const replyBtn = document.createElement('button');
+    replyBtn.className = 'reply-message-btn';
+    replyBtn.innerHTML = '<i class="fas fa-reply"></i>';
+    replyBtn.title = 'Ответить';
+    
+    replyBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        showConfirm(
-            'Удалить сообщение?',
-            'Вы уверены, что хотите удалить это сообщение для всех?',
-            () => deleteMessage(messageId)
-        );
+        setReplyTo(messageId, text, messageFrom);
     });
     
-    actionsContainer.appendChild(deleteBtn);
-}
-
-contentDiv.appendChild(actionsContainer);
-
+    actionsContainer.appendChild(replyBtn);
+    
+    // Кнопка "Удалить" (только для своих сообщений)
+    if (isOwn && messageId) {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-message-btn';
+        deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+        deleteBtn.title = 'Удалить сообщение';
+        
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showConfirm(
+                'Удалить сообщение?',
+                'Вы уверены, что хотите удалить это сообщение для всех?',
+                () => deleteMessage(messageId)
+            );
+        });
+        
+        actionsContainer.appendChild(deleteBtn);
+    }
+    
+    contentDiv.appendChild(actionsContainer);
     wrapper.appendChild(contentDiv);
     
-    messagesContainer.appendChild(wrapper);
+    // Возвращаем готовый элемент (НО НЕ ДОБАВЛЯЕМ ЕГО НА СТРАНИЦУ!)
+    return wrapper;
+}
+
+// ========== ФУНКЦИЯ ДОБАВЛЕНИЯ СООБЩЕНИЯ В ИНТЕРФЕЙС ==========
+// Эта функция создаёт сообщение и добавляет его в КОНЕЦ контейнера
+function addMessageToUI(text, isOwn, timestamp, isDelivered, messageId, messageFrom, msgData) {
+    const messageElement = createMessageElement(text, isOwn, timestamp, isDelivered, messageId, messageFrom, msgData);
+    messagesContainer.appendChild(messageElement);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+function addMessageToUIBeginning(text, isOwn, timestamp, isDelivered, messageId, messageFrom, msgData) {
+    const messageElement = createMessageElement(text, isOwn, timestamp, isDelivered, messageId, messageFrom, msgData);
+    
+    // Если есть кнопка "Загрузить ещё" - вставляем перед ней
+    if (loadMoreButton && messagesContainer.contains(loadMoreButton)) {
+        messagesContainer.insertBefore(messageElement, loadMoreButton);
+    } else {
+        // Иначе вставляем в самое начало
+        messagesContainer.insertBefore(messageElement, messagesContainer.firstChild);
+    }
 }
 
 
@@ -2846,6 +3076,90 @@ messageInput.addEventListener('keydown', (e) => {
     }
 });
 
+
+// ========== ФУНКЦИИ ДЛЯ ПАГИНАЦИИ ==========
+
+function addLoadMoreButton() {
+    if (loadMoreButton) return;
+    
+    const container = document.createElement('div');
+    container.className = 'load-more-container';
+    container.id = 'loadMoreContainer';
+    
+    const button = document.createElement('button');
+    button.className = 'load-more-btn';
+    button.innerHTML = '<i class="fas fa-arrow-up"></i> Загрузить предыдущие сообщения';
+    
+    let isLoading = false;
+    
+    button.onclick = async () => {
+        if (isLoading || isLoadingMore || !hasMoreMessages) return;
+        
+        isLoading = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка...';
+        button.disabled = true;
+        
+        // Сохраняем текущую позицию скролла
+        const oldScrollHeight = messagesContainer.scrollHeight;
+        const oldScrollTop = messagesContainer.scrollTop;
+        
+        // Загружаем старые сообщения
+        await loadMessages(currentRoomId, cryptoKey, true);
+        
+        // Удаляем кнопку
+        if (loadMoreButton) {
+            loadMoreButton.remove();
+            loadMoreButton = null;
+        }
+        
+        // Восстанавливаем прокрутку
+        const newScrollHeight = messagesContainer.scrollHeight;
+        const heightDiff = newScrollHeight - oldScrollHeight;
+        messagesContainer.scrollTop = oldScrollTop + heightDiff;
+        
+        // Если есть ещё сообщения - добавляем новую кнопку
+        if (hasMoreMessages && !allMessagesLoaded) {
+            addLoadMoreButton();
+        }
+        
+        isLoading = false;
+    };
+    
+    container.appendChild(button);
+    loadMoreButton = container;
+    
+    // Вставляем в начало
+    if (messagesContainer.firstChild) {
+        messagesContainer.insertBefore(container, messagesContainer.firstChild);
+    } else {
+        messagesContainer.appendChild(container);
+    }
+}
+
+function setupScrollHandler() {
+    let scrollTimeout = null;
+    
+    messagesContainer.addEventListener('scroll', () => {
+        if (scrollTimeout) clearTimeout(scrollTimeout);
+        
+        scrollTimeout = setTimeout(() => {
+            checkAndShowLoadMoreButton();
+        }, 150);
+    });
+}
+
+function checkAndShowLoadMoreButton() {
+    if (!hasMoreMessages || allMessagesLoaded) return;
+    if (loadMoreButton) return;
+    
+    const isAtTop = messagesContainer.scrollTop <= 50;
+    
+    if (isAtTop) {
+        addLoadMoreButton();
+    }
+}
+
+
 // ИНИЦИАЛИЗАЦИЯ С ГЛОБАЛЬНОЙ ОЧИСТКОЙ (БЕЗ loadPendingMessages)
 async function initialize() {
     try {
@@ -2896,6 +3210,20 @@ async function initialize() {
     } catch (error) {
         console.error('Error during initialization:', error);
     }
+
+
+
+    function setupScrollLoader() {
+    messagesContainer.addEventListener('scroll', () => {
+        // Если скролл вверх и есть ещё сообщения и не идёт загрузка
+        if (messagesContainer.scrollTop === 0 && hasMoreMessages && !isLoadingMore && !allMessagesLoaded) {
+            // Загружаем ещё сообщения
+            loadMessages(currentRoomId, cryptoKey, true);
+        }
+    });
+}
+
+setupScrollHandler();
 }
             initialize();
 
