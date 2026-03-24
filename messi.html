@@ -3099,12 +3099,21 @@ function addLoadMoreButton() {
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка...';
         button.disabled = true;
         
-        // Сохраняем текущую позицию скролла
+        // Сохраняем текущее количество сообщений ДО загрузки
+        const beforeCount = messagesContainer.querySelectorAll('.message-wrapper').length;
+        
+        // Сохраняем позицию скролла
         const oldScrollHeight = messagesContainer.scrollHeight;
         const oldScrollTop = messagesContainer.scrollTop;
         
         // Загружаем старые сообщения
         await loadMessages(currentRoomId, cryptoKey, true);
+        
+        // Считаем количество ПОСЛЕ загрузки
+        const afterCount = messagesContainer.querySelectorAll('.message-wrapper').length;
+        const loadedCount = afterCount - beforeCount;
+        
+        console.log(`📊 Загружено ${loadedCount} сообщений. Всего в чате: ${afterCount} сообщений`);
         
         // Удаляем кнопку
         if (loadMoreButton) {
