@@ -2268,6 +2268,9 @@ async function sendMessage(text) {
             console.log(`📊 Проверка размера комнаты ${currentRoomId} (после ${messageCount} сообщений)`);
             await roomCleanupBySize(currentRoomId, 50);
         }
+                setTimeout(() => {
+            checkAndShowLoadMoreButton();
+        }, 200);
        
     } catch (error) {
         console.error('Send error:', error);
@@ -2659,6 +2662,11 @@ currentMessagesListener = messagesRef.on('child_added', async (snapshot) => {
         roomTime.textContent = new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 
+
+            setTimeout(() => {
+            checkAndShowLoadMoreButton();
+        }, 100);
+
     if (loadMoreButton && messagesContainer.scrollTop > 100) {
     loadMoreButton.style.display = 'none';
 }
@@ -2842,7 +2850,12 @@ function createMessageElement(text, isOwn, timestamp, isDelivered, messageId, me
 function addMessageToUI(text, isOwn, timestamp, isDelivered, messageId, messageFrom, msgData) {
     const messageElement = createMessageElement(text, isOwn, timestamp, isDelivered, messageId, messageFrom, msgData);
     messagesContainer.appendChild(messageElement);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    
+    // Скроллим вниз только если это НОВОЕ сообщение (не при загрузке истории)
+    const isNewMessage = timestamp > (currentLastTimestamp || 0);
+    if (isNewMessage) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
 }
 function addMessageToUIBeginning(text, isOwn, timestamp, isDelivered, messageId, messageFrom, msgData) {
     const messageElement = createMessageElement(text, isOwn, timestamp, isDelivered, messageId, messageFrom, msgData);
@@ -3080,7 +3093,9 @@ messageInput.addEventListener('keydown', (e) => {
 // ========== ФУНКЦИИ ДЛЯ ПАГИНАЦИИ ==========
 
 function addLoadMoreButton() {
+    // Дополнительная проверка - если кнопка уже есть или нет сообщений для загрузки
     if (loadMoreButton) return;
+    if (!hasMoreMessages || allMessagesLoaded) return;
     
     const container = document.createElement('div');
     container.className = 'load-more-container';
@@ -3099,34 +3114,26 @@ function addLoadMoreButton() {
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка...';
         button.disabled = true;
         
-        // Сохраняем текущее количество сообщений ДО загрузки
         const beforeCount = messagesContainer.querySelectorAll('.message-wrapper').length;
-        
-        // Сохраняем позицию скролла
         const oldScrollHeight = messagesContainer.scrollHeight;
         const oldScrollTop = messagesContainer.scrollTop;
         
-        // Загружаем старые сообщения
         await loadMessages(currentRoomId, cryptoKey, true);
         
-        // Считаем количество ПОСЛЕ загрузки
         const afterCount = messagesContainer.querySelectorAll('.message-wrapper').length;
         const loadedCount = afterCount - beforeCount;
         
         console.log(`📊 Загружено ${loadedCount} сообщений. Всего в чате: ${afterCount} сообщений`);
         
-        // Удаляем кнопку
         if (loadMoreButton) {
             loadMoreButton.remove();
             loadMoreButton = null;
         }
         
-        // Восстанавливаем прокрутку
         const newScrollHeight = messagesContainer.scrollHeight;
         const heightDiff = newScrollHeight - oldScrollHeight;
         messagesContainer.scrollTop = oldScrollTop + heightDiff;
         
-        // Если есть ещё сообщения - добавляем новую кнопку
         if (hasMoreMessages && !allMessagesLoaded) {
             addLoadMoreButton();
         }
@@ -3137,7 +3144,6 @@ function addLoadMoreButton() {
     container.appendChild(button);
     loadMoreButton = container;
     
-    // Вставляем в начало
     if (messagesContainer.firstChild) {
         messagesContainer.insertBefore(container, messagesContainer.firstChild);
     } else {
@@ -3158,13 +3164,29 @@ function setupScrollHandler() {
 }
 
 function checkAndShowLoadMoreButton() {
+    // Проверяем, есть ли ещё сообщения для загрузки
     if (!hasMoreMessages || allMessagesLoaded) return;
-    if (loadMoreButton) return;
     
+    // Проверяем, есть ли вообще сообщения в контейнере
+    const messagesCount = messagesContainer.querySelectorAll('.message-wrapper').length;
+    if (messagesCount === 0) return;
+    
+    // Проверяем, докрутили ли до верха
     const isAtTop = messagesContainer.scrollTop <= 50;
     
     if (isAtTop) {
-        addLoadMoreButton();
+        // Если кнопки нет - создаём
+        if (!loadMoreButton) {
+            addLoadMoreButton();
+        } else {
+            // Если кнопка есть, но скрыта - показываем
+            loadMoreButton.style.display = 'flex';
+        }
+    } else {
+        // Если не наверху - скрываем кнопку, но НЕ УДАЛЯЕМ
+        if (loadMoreButton) {
+            loadMoreButton.style.display = 'none';
+        }
     }
 }
 
