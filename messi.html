@@ -2460,8 +2460,13 @@ async function switchRoom(roomId) {
         localStorage.setItem('e2ee_rooms', JSON.stringify(saved));
     }
 }
-
-async function loadMessages(roomId, key, loadMore = false) {
+    
+    
+    
+    
+    
+    
+   async function loadMessages(roomId, key, loadMore = false) {
     try {
         if (isLoadingMore) return;
         
@@ -2548,29 +2553,32 @@ async function loadMessages(roomId, key, loadMore = false) {
         });
         
         if (loadMore) {
-            // Загружаем старые сообщения - сохраняем позицию
+            // ЗАГРУЗКА СТАРЫХ СООБЩЕНИЙ
+            // Сохраняем позицию скролла
             const oldScrollHeight = messagesContainer.scrollHeight;
             const oldScrollTop = messagesContainer.scrollTop;
             
-            // Вставляем в начало (сохраняя порядок)
-            const tempContainer = document.createElement('div');
+            // ВАЖНО: Инвертируем порядок для правильного отображения!
+            // Старые сообщения должны быть сверху, новые снизу
+            // При загрузке старых - они должны идти в начало, НО в правильном порядке (от старых к новым)
+            const messagesToAdd = [...messagesArray];
             
-            for (const msg of messagesArray) {
+            // Добавляем сообщения в начало, сохраняя хронологический порядок
+            // (самое старое - первым, самое новое из загруженных - последним среди загруженных)
+            for (let i = 0; i < messagesToAdd.length; i++) {
+                const msg = messagesToAdd[i];
                 const decrypted = await decryptMessage(msg.data, key);
                 const isOwn = msg.from === userId;
                 const messageElement = createMessageElement(
                     decrypted, isOwn, msg.ts, msg.delivered || false,
                     msg.id, msg.from, msg
                 );
-                tempContainer.appendChild(messageElement);
-            }
-            
-            const children = tempContainer.children;
-            for (let i = children.length - 1; i >= 0; i--) {
+                
+                // Вставляем перед кнопкой загрузки или в начало
                 if (loadMoreButton && messagesContainer.contains(loadMoreButton)) {
-                    messagesContainer.insertBefore(children[i], loadMoreButton);
+                    messagesContainer.insertBefore(messageElement, loadMoreButton);
                 } else {
-                    messagesContainer.insertBefore(children[i], messagesContainer.firstChild);
+                    messagesContainer.insertBefore(messageElement, messagesContainer.firstChild);
                 }
             }
             
@@ -2580,7 +2588,7 @@ async function loadMessages(roomId, key, loadMore = false) {
             messagesContainer.scrollTop = oldScrollTop + heightDiff;
             
         } else {
-            // Первая загрузка - просто добавляем в конец
+            // ПЕРВАЯ ЗАГРУЗКА - добавляем в конец
             for (const msg of messagesArray) {
                 const decrypted = await decryptMessage(msg.data, key);
                 const isOwn = msg.from === userId;
