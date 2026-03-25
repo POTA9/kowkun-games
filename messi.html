@@ -2465,16 +2465,12 @@ async function switchRoom(roomId) {
     
     
     
-    
-   async function loadMessages(roomId, key, loadMore = false) {
+async function loadMessages(roomId, key, loadMore = false) {
     try {
         if (isLoadingMore) return;
         
         if (!loadMore) {
-            // Первая загрузка - очищаем контейнер и сбрасываем состояние
             messagesContainer.innerHTML = '';
-            
-            // Сбрасываем состояние для этой комнаты
             currentLastTimestamp = null;
             hasMoreMessages = true;
             allMessagesLoaded = false;
@@ -2487,10 +2483,9 @@ async function switchRoom(roomId) {
         
         isLoadingMore = true;
         
-        // Строим запрос с лимитом 30 сообщений
+        // Строим запрос
         let query = db.ref(`rooms/${roomId}/messages`).orderByChild('ts').limitToLast(30);
         
-        // Если загружаем ещё и есть timestamp для пагинации
         if (loadMore && currentLastTimestamp) {
             query = db.ref(`rooms/${roomId}/messages`)
                 .orderByChild('ts')
@@ -2505,18 +2500,10 @@ async function switchRoom(roomId) {
             allMessagesLoaded = true;
             isLoadingMore = false;
             
-            if (loadMore && loadMoreButton) {
+            if (loadMoreButton) {
                 loadMoreButton.remove();
                 loadMoreButton = null;
             }
-            
-            // Сохраняем состояние
-            roomsState.set(roomId, {
-                lastTimestamp: currentLastTimestamp,
-                hasMore: hasMoreMessages,
-                allLoaded: allMessagesLoaded
-            });
-            
             return;
         }
         
@@ -2531,42 +2518,52 @@ async function switchRoom(roomId) {
             }
         });
         
-        // Сортируем по времени (старые внизу для правильного отображения)
+        // Сортируем по времени (от старых к новым)
         messagesArray.sort((a, b) => (a.ts || 0) - (b.ts || 0));
         
-        // Если загружено меньше 30 сообщений, значит больше нет
-        if (messagesArray.length < 30) {
+        // Сохраняем timestamp самого старого загруженного сообщения
+        if (messagesArray.length > 0 && !loadMore) {
+            currentLastTimestamp = messagesArray[0].ts;
+        } else if (messagesArray.length > 0 && loadMore) {
+            currentLastTimestamp = messagesArray[0].ts;
+        }
+        
+        // Проверяем, есть ли ещё старые сообщения
+        if (currentLastTimestamp) {
+            const checkQuery = await db.ref(`rooms/${roomId}/messages`)
+                .orderByChild('ts')
+                .endAt(currentLastTimestamp - 1)
+                .limitToLast(1)
+                .once('value');
+            
+            hasMoreMessages = checkQuery.exists() && checkQuery.numChildren() > 0;
+            allMessagesLoaded = !hasMoreMessages;
+            
+            console.log(`📊 Проверка старых сообщений: ${hasMoreMessages ? 'Есть' : 'Нет'}, timestamp: ${currentLastTimestamp}`);
+        } else {
             hasMoreMessages = false;
             allMessagesLoaded = true;
         }
         
-        // Сохраняем timestamp самого старого загруженного сообщения
-        if (messagesArray.length > 0) {
-            currentLastTimestamp = messagesArray[0].ts;
-        }
-        
-        // Сохраняем состояние после загрузки
+        // Сохраняем состояние
         roomsState.set(roomId, {
             lastTimestamp: currentLastTimestamp,
             hasMore: hasMoreMessages,
             allLoaded: allMessagesLoaded
         });
         
+        // Добавляем сообщения в UI
         if (loadMore) {
-            // ЗАГРУЗКА СТАРЫХ СООБЩЕНИЙ
+            // ПОДГРУЗКА СТАРЫХ СООБЩЕНИЙ
             // Сохраняем позицию скролла
             const oldScrollHeight = messagesContainer.scrollHeight;
             const oldScrollTop = messagesContainer.scrollTop;
             
-            // ВАЖНО: Инвертируем порядок для правильного отображения!
-            // Старые сообщения должны быть сверху, новые снизу
-            // При загрузке старых - они должны идти в начало, НО в правильном порядке (от старых к новым)
-            const messagesToAdd = [...messagesArray];
-            
-            // Добавляем сообщения в начало, сохраняя хронологический порядок
-            // (самое старое - первым, самое новое из загруженных - последним среди загруженных)
-            for (let i = 0; i < messagesToAdd.length; i++) {
-                const msg = messagesToAdd[i];
+            // ВАЖНО: Добавляем сообщения в ПРАВИЛЬНОМ порядке (от старых к новым)
+            // messagesArray уже отсортирован от старых к новым
+            // Добавляем их по порядку в начало контейнера
+            for (let i = 0; i < messagesArray.length; i++) {
+                const msg = messagesArray[i];
                 const decrypted = await decryptMessage(msg.data, key);
                 const isOwn = msg.from === userId;
                 const messageElement = createMessageElement(
@@ -2594,18 +2591,23 @@ async function switchRoom(roomId) {
                 const isOwn = msg.from === userId;
                 addMessageToUI(decrypted, isOwn, msg.ts, msg.delivered || false, msg.id, msg.from, msg);
             }
-            
-            // Скроллим вниз
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
         
-        // Добавляем или удаляем кнопку
+        // Управляем кнопкой
+        console.log(`🔘 Состояние кнопки: hasMoreMessages=${hasMoreMessages}, allMessagesLoaded=${allMessagesLoaded}`);
+        
         if (hasMoreMessages && !allMessagesLoaded) {
             if (!loadMoreButton) {
+                console.log('➕ Создаём кнопку загрузки');
                 addLoadMoreButton();
+            } else {
+                console.log('👀 Показываем существующую кнопку');
+                loadMoreButton.style.display = 'flex';
             }
         } else {
             if (loadMoreButton) {
+                console.log('❌ Удаляем кнопку');
                 loadMoreButton.remove();
                 loadMoreButton = null;
             }
@@ -3172,27 +3174,43 @@ function setupScrollHandler() {
 }
 
 function checkAndShowLoadMoreButton() {
+    console.log('🔍 Проверка кнопки: hasMoreMessages=' + hasMoreMessages + ', allMessagesLoaded=' + allMessagesLoaded + ', scrollTop=' + messagesContainer.scrollTop);
+    
     // Проверяем, есть ли ещё сообщения для загрузки
-    if (!hasMoreMessages || allMessagesLoaded) return;
+    if (!hasMoreMessages || allMessagesLoaded) {
+        console.log('❌ Нет сообщений для загрузки, кнопка не нужна');
+        if (loadMoreButton) {
+            loadMoreButton.remove();
+            loadMoreButton = null;
+        }
+        return;
+    }
     
     // Проверяем, есть ли вообще сообщения в контейнере
     const messagesCount = messagesContainer.querySelectorAll('.message-wrapper').length;
-    if (messagesCount === 0) return;
+    if (messagesCount === 0) {
+        console.log('📭 Нет сообщений, кнопка не нужна');
+        return;
+    }
     
     // Проверяем, докрутили ли до верха
     const isAtTop = messagesContainer.scrollTop <= 50;
+    console.log('📏 Позиция скролла: ' + messagesContainer.scrollTop + ', isAtTop=' + isAtTop);
     
     if (isAtTop) {
         // Если кнопки нет - создаём
         if (!loadMoreButton) {
+            console.log('➕ Создаём кнопку (скролл вверху)');
             addLoadMoreButton();
         } else {
             // Если кнопка есть, но скрыта - показываем
+            console.log('👀 Показываем кнопку');
             loadMoreButton.style.display = 'flex';
         }
     } else {
         // Если не наверху - скрываем кнопку, но НЕ УДАЛЯЕМ
         if (loadMoreButton) {
+            console.log('🙈 Скрываем кнопку');
             loadMoreButton.style.display = 'none';
         }
     }
