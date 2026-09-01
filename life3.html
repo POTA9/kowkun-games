@@ -1,0 +1,164 @@
+<html>
+     <head>
+<meta charset="Utf-8">
+<link rel="icon" type="image/png" href="/favicon.png" sizes="32x32" />
+	<title>Житуха</title>
+	<style>
+	html,
+	body {
+	height: 100%;
+	margin: 0;
+	}
+	body {
+	background: black;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: crosshair;
+	touch-action: none;
+	}
+	
+	</style>
+      </head>
+<body>
+
+<canvas id="game"></canvas>
+
+
+<script>
+const canvas = document.getElementById('game');
+const context = canvas.getContext('2d');
+
+canvas.width = document.documentElement.clientWidth;
+canvas.height = document.documentElement.clientHeight;
+
+const grid = 8;
+const w = Math.floor(canvas.width / grid);
+const h = Math.floor(canvas.height / grid);
+
+const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min)) + min;
+
+let a = Array.from({ length: h }, () => Array.from({ length: w }, () =>  0));
+
+context.fillStyle = '#FFCCFF';
+
+const drawGrid = () => {
+  for (let i = 0; i < h; i++) {
+    for (let j = 0; j < w; j++) {
+      if (a[i][j] === 1) {
+        context.fillRect(j * grid, i * grid, grid, grid);
+      } else {
+        context.clearRect(j * grid, i * grid, grid, grid);
+      }
+    }
+  }
+};
+
+const updateGrid = () => {
+  const newGrid = a.map((row, i) => row.map((cell, j) => {
+    let neighbors = 0;
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        if (dx === 0 && dy === 0) continue;
+        let x = j + dx, y = i + dy;
+        if (x < 0) x = w - 1;
+        if (x >= w) x = 0;
+        if (y < 0) y = h - 1;
+        if (y >= h) y = 0;
+        if (a[y][x] === 1) neighbors++;
+      }
+    }
+    return (a[i][j] === 1 && neighbors === 2) || neighbors === 3 ? 1 : 0;
+  }));
+  a = newGrid;
+};
+
+const loop = () => {
+    if (isPlaying) {
+  requestAnimationFrame(loop);
+  updateGrid();
+  drawGrid();
+    }
+};
+
+let isPlaying = false;
+document.onclick = () => {
+  if (!isPlaying) {
+    requestAnimationFrame(loop);
+    isPlaying = true;
+  }else {
+      context.fillStyle = '#' + (Math.random().toString(16) + '000000').substring(2,8).toUpperCase();
+      
+  }
+};
+
+document.addEventListener('keydown', function (e) {
+    if (e.code == 'KeyP'){
+        isPlaying = false
+    }
+})
+
+let prevMouseX, prevMouseY;
+
+canvas.addEventListener('mousemove', (event) => {
+ 
+    const x = Math.floor(event.clientX / grid);
+    const y = Math.floor(event.clientY / grid);
+
+    if (prevMouseX !== undefined && prevMouseY !== undefined) {
+      drawLine(prevMouseX, prevMouseY, x, y);
+    }
+
+    a[y][x] = 1;
+    prevMouseX = x;
+    prevMouseY = y;
+
+    drawGrid();
+  
+});
+
+let prevX, prevY;
+
+canvas.addEventListener('touchmove', (event) => {
+  
+    const touches = event.touches;
+    for (let i = 0; i < touches.length; i++) {
+      const x = Math.floor(touches[i].clientX / grid);
+      const y = Math.floor(touches[i].clientY / grid);
+      
+      if (prevX !== undefined && prevY !== undefined) {
+        drawLine(prevX, prevY, x, y);
+      }
+      
+      a[y][x] = 1;
+      prevX = x;
+      prevY = y;
+    }
+    
+    drawGrid();
+  
+});
+
+function drawLine(x1, y1, x2, y2) {
+  const dx = Math.abs(x2 - x1);
+  const dy = Math.abs(y2 - y1);
+  const sx = (x1 < x2) ? 1 : -1;
+  const sy = (y1 < y2) ? 1 : -1;
+  let err = dx - dy;
+
+  while (true) {
+    a[y1][x1] = 1;
+
+    if (x1 === x2 && y1 === y2) break;
+
+    const e2 = 2 * err;
+    if (e2 > -dy) { err -= dy; x1 += sx; }
+    if (e2 < dx) { err += dx; y1 += sy; }
+  }
+}
+
+
+</script>
+</body>
+
+</html>

@@ -1,0 +1,659 @@
+<html>
+     <head>
+<meta charset="Utf-8">
+<link rel="icon" type="image/png" href="/favicon.png" sizes="32x32" />
+	<title>Тетрис</title>
+	<script type="module">
+        // Импорт необходимых функций из Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, updateDoc, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        // Ваша конфигурация Firebase
+        const firebaseConfig = {
+        apiKey: "AIzaSyD90NTsd6knRycxFbpvyNWBPpD7XD5Ih70",
+        authDomain: "gaim-42aa5.firebaseapp.com",
+        databaseURL: "https://gaim-42aa5-default-rtdb.firebaseio.com",
+        projectId: "gaim-42aa5",
+        storageBucket: "gaim-42aa5.appspot.com",
+        messagingSenderId: "1036683439508",
+        appId: "1:1036683439508:web:b329b1257c9c89b3cef381",
+        measurementId: "G-5EE0W6HVJP"
+    };
+
+    // Инициализация Firebase
+    let app;
+    let auth;
+    let db;
+    var sac = 0
+    var sac1 = localStorage.record
+   
+    if (typeof window !== 'undefined') {
+        app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        auth = getAuth(app);
+        db = getFirestore(app); // Инициализация Firestore
+    }
+
+    // Функция для получения uid пользователя
+    async function getUserUID() {
+        const login = localStorage.getItem('login'); // Получаем логин из localStorage
+
+        if (login) {
+            try {
+                const userCollectionRef = collection(db, 'user');
+                const q = query(userCollectionRef, where('login', '==', login)); // Запрос для поиска документа с указанным логином
+                const querySnapshot = await getDocs(q);
+                
+                if (!querySnapshot.empty) {
+                    let uid; // Объявляем переменную uid
+                    querySnapshot.forEach((doc) => {
+                        const userData = doc.data();
+                        uid = userData.uid; // Получаем uid пользователя
+                    });
+                    return uid; // Возвращаем uid
+                } 
+            } catch (error) {
+                console.error('Ошибка при получении UID:', error);
+            }
+        }
+        return null; // Возвращаем null, если логин не найден
+    }
+    // Функция для получения значения record из Firestore
+    async function getUserRecord(uid) {
+        const userRef = doc(db, 'user', uid);
+        const userDoc = await getDoc(userRef);
+        if (userDoc.exists()) {
+            return userDoc.data().record; // Возвращаем значение record
+        }
+        return null; // Если документ не найден
+    }
+    // Функция для обновления значения в Firestore
+    async function updateUserScore(uid, newScore) {
+    const userRef = doc(db, 'user', uid);
+
+    
+    try {
+        await updateDoc(userRef, {
+            record: newScore
+        });
+        
+    } catch (error) {
+      
+    }
+}
+
+    // Функция для проверки и обновления значения s
+    async function checkAndUpdateScore() {
+        const newScore = parseInt(localStorage.getItem('record')) || 0; // Получаем новое значение из localStorage
+const uid = await getUserUID(); // Получаем uid
+
+if (uid) {
+    await updateUserScore(uid, newScore); // Правильный вызов функции обновления
+}
+
+    }
+    async function initializeScore() {
+        const uid = await getUserUID();
+        if (uid) {
+            sac = await getUserRecord(uid); // Получаем значение record из базы данных
+        }
+     
+    }
+    initializeScore() 
+   
+
+    function loop() {
+        rAF = requestAnimationFrame(loop);
+        
+        if (sac < localStorage.record  && sac1 !== localStorage.record){
+            sac1 = localStorage.record
+            checkAndUpdateScore(); 
+           
+        }
+    }
+
+
+    rAF = requestAnimationFrame(loop);
+</script>
+	<style>
+	html,
+	body {
+	height: 100%;
+	margin: 0;
+	}
+body {
+    background: black;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: none;
+    touch-action: none;
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+canvas {
+    border: 1px solid white;
+    display: block; /* Убирает лишние отступы */
+    max-height: 95vh; /* Максимальная высота 95% от высоты экрана */
+    max-width: 95vw; /* Максимальная ширина 95% от ширины экрана */
+    object-fit: contain; /* Сохраняет пропорции */
+}
+	</style>
+      </head>
+<body>
+
+<canvas  id="game"></canvas>
+
+
+<script>
+const canvas = document.getElementById('game');
+const context = canvas.getContext('2d');
+
+
+
+
+
+
+
+
+// Рассчитываем размер grid на основе минимального размера экрана
+const maxGridHeight = Math.floor(window.innerHeight * 0.95 / 20);
+const maxGridWidth = Math.floor(window.innerWidth * 0.95 / 10);
+var grid = Math.min(maxGridHeight, maxGridWidth);
+
+// Устанавливаем размеры canvas
+canvas.height = 20 * grid;
+canvas.width = 10 * grid;
+
+
+
+
+
+
+
+
+
+
+
+
+let score = 0;
+let record = 0;
+let level = 1;
+//var Storage_size = localStorage.length ;
+if (localStorage.record > 0){
+record = localStorage.record;
+}
+
+
+
+
+var tetrominoSequence = [];
+var playfild = [];
+for (let row = -2; row < 20; row++){
+playfild[row] = [];
+for (let col = 0; col < 10; col++){
+playfild[row][col] = 0;
+}
+}
+const tetrominos = {
+'I':[
+[0,0,0,0],
+[1,1,1,1],
+[0,0,0,0],
+[0,0,0,0]
+],
+'J':[
+[1,0,0],
+[1,1,1],
+[0,0,0],
+],
+'L':[
+[0,0,1],
+[1,1,1],
+[0,0,0],
+],
+'O':[
+[1,1],
+[1,1],
+],
+'S':[
+[0,1,1],
+[1,1,0],
+[0,0,0],
+],
+'Z':[
+[1,1,0],
+[0,1,1],
+[0,0,0],
+],
+'T':[
+[0,1,0],
+[1,1,1],
+[0,0,0],
+]
+
+};
+
+const colors ={
+'I': '#FF66FF',
+'O': '#00FFFF',
+'T': '#FFCCFF',
+'S': '#CC66FF',
+'Z': '#CC00CC',
+'J': '#66CCFF',
+'L': '#9966FF'
+};
+
+let tetromino = getNextTetromino();
+let rAF = null;
+let gameOver = false;
+let pause = false;
+
+
+
+
+
+
+function getRandomInt(min, max){
+min = Math.ceil(min);
+max = Math.floor(max);
+return Math.floor(Math.random() * (max - min + 1)) + min;
+
+}
+
+
+function generateSequence() {
+const sequence = ['I',  'J', 'L', 'O', 'S', 'T', 'Z'];
+while (sequence.length){
+const rand = getRandomInt(0, sequence.length - 1);
+const name = sequence.splice(rand, 1)[0];
+tetrominoSequence.push(name);
+}
+
+}
+
+
+function getNextTetromino() {
+if (tetrominoSequence.length === 0){
+generateSequence();
+
+}
+
+const name = tetrominoSequence.pop();
+const matrix = tetrominos[name];
+const col = playfild[0].length / 2 - Math.ceil(matrix[0].length / 2);
+const row = name === 'I' ? -1 : -2;
+return{
+name: name,
+matrix: matrix,
+row: row,
+col: col
+
+};
+
+}
+
+function rotate(matrix){
+const N = matrix.length - 1;
+const result = matrix.map((row, i) =>
+row.map((val, j) => matrix[N - j][i])
+ 
+);
+return result;
+}
+
+
+function isValidMove(matrix, cellRow, cellCol){
+for (let row = 0; row < matrix.length; row++){
+for (let col = 0; col < matrix[row].length; col++){
+if (matrix[row][col] && (
+cellCol + col < 0 ||
+cellCol + col >= playfild[0].length ||
+cellRow + row >= playfild.length ||
+playfild[cellRow + row][cellCol + col])
+) {
+return false;
+}
+
+}
+
+}
+return true;
+}
+
+function placeTetromino(){
+for (let row = 0; row < tetromino.matrix.length; row++){
+for (let col = 0; col < tetromino.matrix[row].length; col++){
+if (tetromino.matrix[row][col]){
+if (tetromino.row + row < 0){
+return showGameOver();
+
+}
+playfild[tetromino.row + row][tetromino.col + col] = tetromino.name;
+}
+
+}
+
+}
+for (let row = playfild.length - 1; row >= 0; ){
+if (playfild[row].every(cell => !!cell)){
+
+
+score++;
+level = Math.floor(score/5)+1;
+if (score > record){
+record = score;
+localStorage.record = record;
+}
+
+
+for (let r = row; r >= 0; r--){
+for (let c = 0; c < playfild[r].length; c++){
+playfild[r][c] = playfild[r-1][c];
+
+}
+
+}
+
+}
+else {
+row--;
+}
+}
+tetromino = getNextTetromino();
+}
+
+
+
+function showGameOver(){
+cancelAnimationFrame(rAF);
+gameOver = true;
+context.fillStyle = 'black';
+context.globalAlpha = 0.75;
+context.fillRect(0, canvas.height / 2 - grid , canvas.width, grid*2);
+context.globalAlpha = 1;
+context.fillStyle = 'white';
+context.font = grid +'px monospace';
+context.textAlign = 'center';
+context.textBaseline = 'middle';
+context.fillText('GAME OVER!', canvas.width / 2, canvas.height / 2);
+
+}
+
+function showPause(){
+cancelAnimationFrame(rAF);
+pause = true;
+context.fillStyle = 'black';
+context.globalAlpha = 0.75;
+context.fillRect(0, canvas.height / 2 - grid , canvas.width, grid*2);
+context.globalAlpha = 1;
+context.fillStyle = 'white';
+context.font = grid +'px monospace';
+context.textAlign = 'center';
+context.textBaseline = 'middle';
+context.fillText('PAUSE', canvas.width / 2, canvas.height / 2);
+
+}
+
+
+
+
+
+
+
+function showScore(){
+
+
+
+
+
+context.globalAlpha = 1;
+context.fillStyle = 'white';
+context.font = grid/2 +'px monospace';
+context.textAlign = 'center';
+context.textBaseline = 'middle';
+context.fillText('level: '+level, grid*2, grid*1/2);
+context.fillText('score: '+score, grid*2, grid);
+context.fillText('record: '+record, grid*8, grid*1/2);
+
+  if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+
+context.fillStyle = '#aaa';
+context.globalAlpha = 0.6;
+context.fillRect(canvas.width - grid * 2, canvas.height - grid * 2 , grid * 2, grid * 2);
+context.fillRect(0, canvas.height - grid * 2 , grid * 2, grid * 2);
+}
+context.globalAlpha = 1;
+context.fillStyle = 'white';
+}
+//
+
+
+
+
+
+
+
+
+
+
+
+
+
+let lastTime = 0;
+// Базовая скорость (интервал между падениями в миллисекундах)
+const baseSpeed = 1000;
+let dropCounter = 0;
+
+function loop(timestamp) {
+    if (pause) return;
+    rAF = requestAnimationFrame(loop);
+    
+    if (!lastTime) lastTime = timestamp;
+    const deltaTime = timestamp - lastTime;
+    lastTime = timestamp;
+    
+    // Скорость зависит от уровня (чем выше уровень, тем быстрее падение)
+    const currentSpeed = Math.max(50, baseSpeed - (level - 1) * 80); // Минимальная скорость 50мс
+    
+    dropCounter += deltaTime;
+    if (dropCounter > currentSpeed) {
+        tetromino.row++;
+        dropCounter = 0;
+        
+        if (!isValidMove(tetromino.matrix, tetromino.row, tetromino.col)) {
+            tetromino.row--;
+            placeTetromino();
+        }
+    }
+    
+    // Отрисовка игры
+    context.clearRect(0,0,canvas.width,canvas.height);
+    
+    // Отрисовка игрового поля
+    for (let row = 0; row < 20; row++){
+        for (let col = 0; col < 10; col++){
+            if (playfild[row][col]){
+                const name = playfild[row][col];
+                context.fillStyle = colors[name];
+                context.fillRect(col * grid, row * grid, grid-1, grid-1);
+            }
+        }
+    }
+    
+    // Отрисовка текущей фигуры
+    if (tetromino){
+        context.fillStyle = colors[tetromino.name];
+        for (let row = 0; row < tetromino.matrix.length; row++){
+            for (let col = 0; col < tetromino.matrix[row].length; col++){
+                if (tetromino.matrix[row][col]){
+                    context.fillRect((tetromino.col + col) * grid, (tetromino.row + row) * grid, grid-1, grid-1);
+                }
+            }
+        }
+    }
+    
+    showScore();
+}
+
+
+
+
+document.addEventListener('keydown', function(e){
+if (gameOver) return;
+
+if (e.keyCode === 32 && !pause){
+showPause();
+
+} else if (e.keyCode === 32 && pause){ 
+pause = false;
+requestAnimationFrame(loop)
+}
+if (pause) return;
+
+if (e.which === 37 || e.which === 39){
+const col = e.which === 37
+? tetromino.col - 1
+: tetromino.col + 1;
+
+if (isValidMove(tetromino.matrix, tetromino.row, col)){
+tetromino.col = col;
+}
+}
+if (e.which === 38){
+const matrix = rotate(tetromino.matrix);
+if (isValidMove(matrix, tetromino.row, tetromino.col)){
+tetromino.matrix = matrix;
+}
+}
+if (e.which === 40){
+const row = tetromino.row + 1;
+if(!isValidMove(tetromino.matrix, row, tetromino.col)){
+
+tetromino.row = row - 1;
+placeTetromino();
+return;
+}
+tetromino.row = row;
+}
+
+});
+
+
+
+
+
+
+
+document.addEventListener('touchstart', handleTouchStart, false);
+document.addEventListener('touchmove', handleTouchMove, false);
+ var xDown = null;
+ var yDown = null;
+function handleTouchStart(evt){
+xDown = evt.touches[0].clientX;
+yDown = evt.touches[0].clientY;
+
+}
+
+function handleTouchMove(evt){
+if (! xDown || ! yDown){
+return;
+}
+var xUp = evt.touches[0].clientX;
+var yUp = evt.touches[0].clientY;
+
+var xDiff = xDown - xUp;
+var yDiff = yDown - yUp;
+
+
+if (Math.abs(xDiff) > Math.abs(yDiff)){
+
+
+
+}else{  
+if (yDiff > 0){  
+
+const row = tetromino.row + 1;
+if(!isValidMove(tetromino.matrix, row, tetromino.col)){
+
+tetromino.row = row - 1;
+placeTetromino();
+return;
+}
+tetromino.row = row;
+
+}
+
+}
+}
+
+
+xDown = null;
+yDown = null;
+
+
+
+  if ('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0) {
+
+document.onclick = (el) => {
+
+if (Math.floor(el.offsetY/grid) < 3 && !pause && !gameOver){
+showPause();
+
+} else if (Math.floor(el.offsetY/grid) < 3 && pause){ 
+pause = false;
+requestAnimationFrame(loop)
+}
+if (pause) return;
+
+if (Math.floor(el.offsetX/grid) <2 && Math.floor(el.offsetY/grid) >17 || Math.floor(el.offsetX/grid) > 7 && Math.floor(el.offsetY/grid) > 17){
+const col = Math.floor(el.offsetX/grid) <2 && Math.floor(el.offsetY/grid) >17 
+? tetromino.col - 1
+: tetromino.col + 1;
+
+if (isValidMove(tetromino.matrix, tetromino.row, col)){
+tetromino.col = col;
+}
+}else
+
+
+
+
+
+
+if (Math.floor(el.offsetY/grid) > 3){
+const matrix = rotate(tetromino.matrix);
+if (isValidMove(matrix, tetromino.row, tetromino.col)){
+tetromino.matrix = matrix;
+}
+}
+}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+rAF = requestAnimationFrame(loop);
+</script>
+</body>
+</html>

@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/favicon.png" sizes="32x32" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Заметки</title>
+    <script type="module">
+
+        // Импорт необходимых функций из Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
+        import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    
+        // Ваша конфигурация Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyD90NTsd6knRycxFbpvyNWBPpD7XD5Ih70",
+        authDomain: "gaim-42aa5.firebaseapp.com",
+        databaseURL: "https://gaim-42aa5-default-rtdb.firebaseio.com",
+        projectId: "gaim-42aa5",
+        storageBucket: "gaim-42aa5.appspot.com",
+        messagingSenderId: "1036683439508",
+        appId: "1:1036683439508:web:b329b1257c9c89b3cef381",
+        measurementId: "G-5EE0W6HVJP" // Ваша конфигурация
+        };
+    
+        // Инициализация Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const auth = getAuth(app);
+        const db = getFirestore(app); // Инициализация Firestore
+    
+        // Функция для получения uid пользователя
+        async function getUserUID() {
+            const login = localStorage.getItem('login'); // Получаем логин из localStorage
+    
+            if (login) {
+                const userCollectionRef = collection(db, 'user');
+                const q = query(userCollectionRef, where('login', '==', login));
+                const querySnapshot = await getDocs(q);
+    
+                if (!querySnapshot.empty) {
+                    let uid;
+                    querySnapshot.forEach((doc) => {
+                        const userData = doc.data();
+                        uid = userData.uid; // Получаем uid пользователя
+                    });
+                    return uid; // Возвращаем uid
+                } 
+            }
+            return null; // Возвращаем null, если логин не найден
+        }
+    
+        // Функция для проверки и создания документов notes и settings
+        async function checkAndCreateDocuments(uid) {
+            const notesRef = doc(db, 'notes', uid);
+            const notesDoc = await getDoc(notesRef);
+            if (!notesDoc.exists()) {
+                await setDoc(notesRef, { notes: [{ text: '', isFavorite: false }] });
+                localStorage.setItem('notes', JSON.stringify([{ text: '', isFavorite: false }])); 
+            } else {
+                const notesData = notesDoc.data().notes;
+                localStorage.setItem('notes', JSON.stringify(notesData)); 
+            }
+    
+            const settingsRef = doc(db, 'settings', uid);
+            const settingsDoc = await getDoc(settingsRef);
+            if (!settingsDoc.exists()) {
+                await setDoc(settingsRef, { settings: [] });
+                localStorage.setItem('settings', JSON.stringify([])); 
+            } else {
+                const settingsData = settingsDoc.data().settings;
+                localStorage.setItem('settings', JSON.stringify(settingsData)); 
+            }
+        }
+    
+        // Функция для обновления notes в Firestore
+        async function updateNotes(uid, newNotes) {
+            const notesRef = doc(db, 'notes', uid);
+            await updateDoc(notesRef, { notes: newNotes });
+        }
+    
+        // Функция для обновления settings в Firestore
+        async function updateSettings(uid, newSettings) {
+            const settingsRef = doc(db, 'settings', uid);
+            await updateDoc(settingsRef, { settings: newSettings });
+        }
+    
+        // Инициализация и проверка документов при загрузке страницы
+        async function initialize() {
+            const uid = await getUserUID();
+            if (uid) {
+                await checkAndCreateDocuments(uid); // Проверяем и создаем документы
+                startLocalStorageWatcher(uid); // Запускаем наблюдатель за localStorage
+            }
+        }
+    
+        // Функция для наблюдения за изменениями в localStorage
+// Функция для наблюдения за изменениями в localStorage
+function startLocalStorageWatcher(uid) {
+    let previousNotes = localStorage.getItem('notes');
+    let previousSettings = localStorage.getItem('settings');
+
+    // Функция для проверки и обновления данных
+    const checkAndUpdate = async () => {
+        const currentNotes = localStorage.getItem('notes');
+        const currentSettings = localStorage.getItem('settings');
+
+        if (currentNotes !== previousNotes) {
+            previousNotes = currentNotes;
+            await updateNotes(uid, JSON.parse(currentNotes));
+        }
+
+        if (currentSettings !== previousSettings) {
+            previousSettings = currentSettings;
+            await updateSettings(uid, JSON.parse(currentSettings));
+        }
+    };
+
+    // Создание MutationObserver для отслеживания изменений в DOM
+    const observer = new MutationObserver(() => {
+        checkAndUpdate();
+    });
+
+    // Настройка наблюдения за изменениями в body
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+
+    // Начальная проверка данных
+    checkAndUpdate();
+}
+window.addEventListener('storage', (event) => {
+    if (event.key === 'notes') {
+        previousNotes = event.newValue;
+        updateNotes(uid, JSON.parse(event.newValue));
+    } else if (event.key === 'settings') {
+        previousSettings = event.newValue;
+        updateSettings(uid, JSON.parse(event.newValue));
+    }
+});
+
+initialize();
+
+settingsModal.style.display = "none"
+
+// Обновляем setInterval, чтобы проверять состояние модального окна
+setInterval(() => {
+    if (settingsModal.style.display === "none") { // Проверяем, открыто ли модальное окно
+        renderNotes();
+        loadSettings();
+    }
+}, 1000);
+    
+
+
+        // Вызов функции инициализации
+
+    
+    </script>
+    
+    
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            
+        }
+
+        h1 {
+            text-align: center;
+           
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        #settingsIcon {
+            margin-left: 10px;
+            cursor: pointer;
+        }
+
+        #noteInput {
+            width: 100%;
+            max-width: 600px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            resize: vertical;
+        }
+
+#searchContainer {
+    position: relative;
+    width: 100%;
+    max-width: 600px; /* Убедитесь, что ширина такая же, как у заметок */
+    margin-bottom: 15px; /* Отступ снизу для согласованности с заметками */
+}
+
+#searchInput {
+    width: 100%; /* Полная ширина контейнера */
+    max-width: 600px; /* Установите максимальную ширину */
+    padding: 10px 40px 10px 10px; /* Отступы для текста и крестика */
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 16px;
+    box-sizing: border-box; /* Учитываем отступы и рамки в ширине */
+    transition: border-color 0.3s;
+}
+
+#clearSearch {
+    position: absolute;
+    right: 10px; /* Установите отступ справа */
+    top: 50%;
+    transform: translateY(-50%); /* Выравнивание по центру */
+    cursor: pointer;
+    display: none; /* Скрываем крестик по умолчанию */
+    font-size: 15px; /* Настройте размер, если нужно */
+}
+
+
+        #searchInput:focus {
+            
+            outline: none;
+        }
+
+        button {
+            background-color: var(--button-color);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+            margin-top: 10px;
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 20px; /* Добавлен отступ снизу для кнопки */
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #notesContainer {
+            margin-top: 20px;
+            width: 100%;
+            max-width: 600px;
+            max-height: 40vh;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: white;
+            padding: 10px;
+        }
+
+.note {
+
+    color: var(--note-text-color);
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow-wrap: break-word; /* Позволяет разбивать длинные слова */
+    word-wrap: break-word; /* Для старых браузеров */
+    hyphens: auto; /* Добавляет переносы слов, если они слишком длинные */
+}
+		.notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #4CAF50; /* зеленый цвет */
+    color: white;
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    transition: opacity 0.5s;
+	 z-index: 1000; /* Установите высокий z-index */
+}
+
+        .note .button-container {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 10px;
+        }
+
+.note button {
+    background: none; /* Убираем фон */
+    color: #2196F3; /* Цвет текста */
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: none;
+    cursor: pointer;
+    margin-left: 10px;
+    outline: none; /* Убираем обводку при фокусе */
+}
+
+.note button:hover,
+.note button:focus {
+    background: none; /* Убираем фон при наведении и фокусе */
+    color: #1976D2; /* Цвет текста при наведении */
+}
+
+
+        .copy-button {
+            background-color: transparent;
+            color: #2196F3;
+        }
+
+        .icon {
+            font-size: 20px;
+            line-height: 0;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0, 0, 0);
+            background-color: rgba(0, 0, 0, 0.4);
+            padding-top: 60px;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 5px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .settings-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .settings-item input[type="color"] {
+            margin-left: 10px;
+        }
+
+        .theme-buttons {
+            display: flex;
+            flex-direction: column;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .dark-theme {
+            background-color: #333;
+            color: #f4f4f4;
+        }
+
+        .dark-theme button {
+            background-color: #555;
+            color: #fff;
+        }
+
+        .dark-theme .note {
+            background-color: #444;
+            color: #f4f4f4;
+        }
+
+        .dark-theme .note button {
+            background-color: transparent;
+            color: #2196F3;
+        }
+
+        .dark-theme .modal-content {
+            background-color: #444;
+            color: #f4f4f4;
+        }
+
+        .dark-theme .modal-content .settings-item label {
+            color: #f4f4f4;
+        }
+
+        .reset-button {
+            width: 100%;
+        }
+
+        @media (max-width: 600px) {
+            button {
+                width: 100%;
+                margin-top: 10px;
+            }
+
+            #noteInput, #searchInput {
+                font-size: 14px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+          
+        }
+		  .draggable {
+            cursor: move; /* Показать курсор перемещения */
+        }
+		        .note .delete-button {
+            position: absolute;
+            bottom: 10px; /* Отступ от нижней границы заметки */
+            left: 10px; /* Отступ от левой границы заметки */
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+@keyframes fillStar {
+    0% {
+        color: transparent; /* Начальный цвет */
+    }
+    100% {
+        color: inherit; /* Конечный цвет, который наследуется */
+    }
+}
+
+.favorite-button .icon.fill {
+    animation: fillStar 0.5s forwards; /* Применяем анимацию */
+}
+.note.dragging {
+    opacity: 0.5; /* Прозрачность заметки, когда она перетаскивается */
+}
+
+.note.over {
+    border: 2px dashed var(--note-text-color); /* Использование переменной для цвета текста заметки */
+    background-color: #f9f9f9;
+}
+
+:root {
+    --note-text-color: #333333; /* Цвет текста заметок по умолчанию */
+    --button-color: #4CAF50; /* Цвет кнопок по умолчанию */
+}
+
+#notesContainer {
+    position: relative; /* Установка позиции для контейнера заметок */
+}
+    </style>
+</head>
+<body>
+<div id="notification" class="notification" style="display: none;">
+    Заметка скопирована в буфер обмена
+</div>
+    <h1>Заметки <span id="settingsIcon">⚙️</span></h1>
+    <textarea id="noteInput" rows="5" placeholder="Введите заметку"></textarea><br>
+<button onclick="addNote()">Добавить заметку</button>
+<button onclick="changeNote()" style="display: none;">Изменить заметку</button>
+    <div id="searchContainer">
+    <input type="text" id="searchInput" placeholder="Поиск по заметкам" onkeyup="searchNotes()">
+    <span id="clearSearch" onclick="clearSearchInput()">✖️</span>
+</div>
+    <div id="notesContainer">
+        <div id="notesList"></div>
+    </div>
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Настройки цвета</h2>
+            <div class="settings-item">
+                <label for="bgColor">Цвет фона:</label>
+                <input type="color" id="bgColor" value="#f4f4f4" onchange="changeBackgroundColor()">
+            </div>
+            <div class="settings-item">
+                <label for="buttonColor">Цвет кнопок:</label>
+                <input type="color" id="buttonColor" value="#4CAF50" onchange="changeButtonColor()">
+            </div>
+            <div class="settings-item">
+                <label for="noteBgColor">Цвет заметок:</label>
+                <input type="color" id="noteBgColor" value="#ffffff" onchange="changeNoteBackgroundColor()">
+            </div>
+            <div class="settings-item">
+                <label for="textColor">Цвет текста заметок:</label>
+                <input type="color" id="textColor" value="#333333" onchange="changeTextColor()">
+            </div>
+            <div class="settings-item">
+                <label for="buttonTextColor">Цвет текста кнопок:</label>
+                <input type="color" id="buttonTextColor" value="#ffffff" onchange="changeButtonTextColor()">
+            </div>
+
+            <div class="theme-buttons">
+               
+                <button class="reset-button" onclick="resetSettings()">Сбросить настройки</button>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/2.1.3/marked.min.js"></script>
+<script>
+    const notesList = document.getElementById('notesList');
+    const settingsModal = document.getElementById('settingsModal');
+    const notesContainer = document.getElementById('notesContainer');
+    const searchInput = document.getElementById('searchInput');
+    const clearSearch = document.getElementById('clearSearch');
+   
+        let draggingNote = null;
+let currentSearchValue = ''; // Переменная для хранения текущего значения поиска
+	let editingIndex = null; 
+
+    function updateStarColors() {
+    const notesData = JSON.parse(localStorage.getItem('notes')) || [];
+    const noteBgColor = document.getElementById('noteBgColor').value;
+    const textColor = document.getElementById('textColor').value;
+
+    const notes = document.querySelectorAll('.note');
+    notes.forEach((note, index) => {
+        const isFavorite = notesData[index].isFavorite;
+        const starButton = note.querySelector('.favorite-button .icon');
+        if (starButton) {
+            starButton.style.color = document.getElementById('textColor').value;
+        }
+    });
+}
+function renderNotes() {
+    const notes = JSON.parse(localStorage.getItem('notes')) || [];
+    notesList.innerHTML = '';
+    const settings = JSON.parse(localStorage.getItem('settings')) || {};
+    const noteBgColor = settings.noteBgColor || '#ffffff';
+    const textColor = settings.textColor || '#333333';
+    
+    const filteredNotes = notes
+        .filter(note => note.text && note.text.toLowerCase().includes(currentSearchValue.toLowerCase()))
+        .sort((a, b) => (b.isFavorite - a.isFavorite)); // Сначала избранные
+
+    filteredNotes.forEach((note, index) => {
+        const actualIndex = notes.indexOf(note);
+        const div = document.createElement('div');
+        div.className = 'note draggable';
+        div.draggable = true;
+        div.dataset.index = actualIndex;
+        div.style.backgroundColor = noteBgColor; // Устанавливаем цвет фона заметки
+        div.style.color = textColor;
+
+        div.addEventListener('dragstart', dragStart);
+        div.addEventListener('dragover', dragOver);
+        div.addEventListener('drop', drop);
+        div.addEventListener('dragend', dragEnd); // Добавление обработчика dragend
+        
+        const isFavorite = note.isFavorite;
+
+        div.innerHTML = `
+            <div>${marked(note.text)}</div>
+            <div class="button-container">
+                <button onclick="toggleFavorite(${actualIndex}, this)" title="Избранное" class="favorite-button" style="position: absolute; top: 1px; right: 10px; background: none; border: none;">
+                    <span class="icon" style="color:${isFavorite ? textColor : (document.getElementById('textColor').value)};">${isFavorite ? '★' : '☆'}</span>
+                </button>
+                <button class="edit-button" onclick="editNote(${actualIndex})" title="Редактировать">
+                    <span class="icon">✏️</span>
+                </button>
+<button class="copy-button" onclick="copyToClipboard('${note.text.replace(/'/g, "\\'").replace(/"/g, '\\\'').replace(/`/g, '\\`').replace(/\n/g, '\\n')}')" title="Скопировать">
+    <span class="icon">📋</span>
+</button>
+
+                <button class="delete-button" onclick="deleteNote(${actualIndex})" title="Удалить">
+                    <span class="icon">🗑️</span>
+                </button>
+            </div>
+        `;
+        notesList.appendChild(div);
+    });
+
+    // Показываем контейнер, если есть заметки в локальном хранилище
+    const hasNotesInStorage = notes.length > 0;
+    const hasFilteredNotes = filteredNotes.length > 0;
+
+    notesContainer.style.display = hasNotesInStorage ? 'block' : 'none';
+    document.getElementById('searchContainer').style.display = hasNotesInStorage ? 'block' : 'none';
+}
+
+
+
+        function dragStart(e) {
+            draggingNote = e.target; // Сохраняем элемент, который перетаскиваем
+            e.dataTransfer.effectAllowed = 'move'; // Разрешаем перемещение
+        }
+
+        function dragOver(e) {
+    e.preventDefault(); // Позволяем элементу быть перетаскиваемым
+    const target = e.target;
+
+    // Проверяем, что целевой элемент - это карточка
+    if (target.classList.contains('note')) {
+        const draggedIndex = draggingNote.dataset.index; // Получаем индекс перетаскиваемой заметки
+        const targetIndex = target.dataset.index; // Получаем индекс целевой заметки
+
+        if (draggedIndex !== targetIndex) { // Проверяем, что индексы разные
+            const allNotes = document.querySelectorAll('.note');
+            allNotes.forEach(note => note.classList.remove('over')); // Убираем выделение со всех заметок
+            target.classList.add('over'); // Добавляем класс для выделения
+        }
+    }
+}
+
+function drop(e) {
+    e.preventDefault(); // Предотвращаем стандартное поведение
+    const allNotes = document.querySelectorAll('.note');
+    allNotes.forEach(note => note.classList.remove('over')); // Убираем выделение со всех заметок
+
+    // Проверяем, что событие произошло на карточке
+    const target = e.target.closest('.note'); // Ищем ближайшую карточку
+
+    if (target && draggingNote) {
+        const draggedIndex = draggingNote.dataset.index; // Получаем индекс перетаскиваемой заметки
+        const targetIndex = target.dataset.index; // Получаем индекс целевой заметки
+
+        if (draggedIndex !== targetIndex) { // Проверяем, что индексы разные
+            const notes = JSON.parse(localStorage.getItem('notes')) || [];
+            const draggedNote = notes[draggedIndex]; // Сохраняем перетаскиваемую заметку
+            notes.splice(draggedIndex, 1); // Удаляем её из оригинального массива
+            notes.splice(targetIndex, 0, draggedNote); // Вставляем её на новое место
+            localStorage.setItem('notes', JSON.stringify(notes)); // Сохраняем обновленный массив
+            renderNotes(); // Перерисовываем заметки
+        }
+    }
+
+    draggingNote.classList.remove('dragging'); // Убираем класс при завершении перетаскивания
+}
+function dragEnd() {
+    const allNotes = document.querySelectorAll('.note');
+    allNotes.forEach(note => note.classList.remove('over')); // Убираем выделение со всех заметок
+}
+
+function dragLeave(e) {
+    if (e.target.classList.contains('note')) {
+        e.target.classList.remove('over'); // Убираем выделение, когда курсор покидает заметку
+    }
+}
+
+// Добавьте обработчик события dragleave для всех заметок
+const allNotes = document.querySelectorAll('.note');
+allNotes.forEach(note => {
+    note.addEventListener('dragleave', dragLeave);
+});
+
+
+
+function dragStart(e) {
+    draggingNote = e.target; // Сохраняем элемент, который перетаскиваем
+    draggingNote.classList.add('dragging'); // Добавляем класс для визуального эффекта
+    e.dataTransfer.effectAllowed = 'move'; // Разрешаем перемещение
+}
+
+	
+
+function editNote(index) {
+    const notes = JSON.parse(localStorage.getItem('notes'));
+    const noteInput = document.getElementById('noteInput');
+    noteInput.value = notes[index].text; // Заполняем текстовое поле текстом заметки
+    editingIndex = index; // Сохраняем индекс редактируемой заметки
+    document.querySelector('button[onclick="addNote()"]').style.display = 'none'; // Скрываем кнопку "Добавить заметку"
+    document.querySelector('button[onclick="changeNote()"]').style.display = 'block'; // Показываем кнопку "Изменить заметку"
+}
+
+// Функция для изменения заметки
+function changeNote() {
+    const noteInput = document.getElementById('noteInput');
+    const noteText = noteInput.value;
+
+    if (noteText && editingIndex !== null) {
+        const notes = JSON.parse(localStorage.getItem('notes'));
+        notes[editingIndex].text = noteText; // Обновляем текст заметки
+        localStorage.setItem('notes', JSON.stringify(notes));
+        noteInput.value = ''; // Очищаем поле ввода
+        editingIndex = null; // Сбрасываем индекс
+        document.querySelector('button[onclick="addNote()"]').style.display = 'block'; // Показываем кнопку "Добавить заметку"
+        document.querySelector('button[onclick="changeNote()"]').style.display = 'none'; // Скрываем кнопку "Изменить заметку"
+        renderNotes(); // Перерисовываем заметки
+    }
+}
+		
+    function addNote() {
+        const noteInput = document.getElementById('noteInput');
+        const noteText = noteInput.value;
+        if (noteText) {
+            const notes = JSON.parse(localStorage.getItem('notes')) || [];
+            notes.push({ text: noteText, isFavorite: false }); // Добавляем состояние избранного
+            localStorage.setItem('notes', JSON.stringify(notes));
+            noteInput.value = '';
+            renderNotes(); 
+        }
+    }
+
+function toggleFavorite(index, button) {
+    const notes = JSON.parse(localStorage.getItem('notes'));
+    notes[index].isFavorite = !notes[index].isFavorite; // Меняем состояние "избранное"
+    localStorage.setItem('notes', JSON.stringify(notes)); // Обновляем состояние заметок
+
+    const noteBgColor = JSON.parse(localStorage.getItem('settings')).noteBgColor || '#ffffff';
+    const textColor = JSON.parse(localStorage.getItem('settings')).textColor || '#333333';
+    const isFavorite = notes[index].isFavorite;
+    const starIcon = button.querySelector('.icon');
+
+    // Обновляем цвет звезды
+    starIcon.style.color = document.getElementById('textColor').value;
+    starIcon.innerHTML = isFavorite ? '★' : '☆'; // Обновляем символ звезды
+
+    // Добавляем класс для анимации
+    starIcon.classList.add('fill');
+
+    // Удаляем класс анимации через некоторое время, чтобы можно было повторно применить его
+    setTimeout(() => {
+        starIcon.classList.remove('fill');
+    }, 500); // Длительность анимации
+
+    renderNotes(); // Обновляем отображение
+}
+function deleteNote(index) {
+    const notes = JSON.parse(localStorage.getItem('notes'));
+    if (editingIndex === index) {
+        // Если удаляемая заметка - это редактируемая заметка
+        editingIndex = null; // Сбрасываем индекс редактируемой заметки
+        document.getElementById('noteInput').value = ''; // Очищаем поле ввода
+        document.querySelector('button[onclick="addNote()"]').style.display = 'block'; // Показываем кнопку «Добавить заметку»
+        document.querySelector('button[onclick="changeNote()"]').style.display = 'none'; // Скрываем кнопку «Изменить заметку»
+    }
+    notes.splice(index, 1);
+    localStorage.setItem('notes', JSON.stringify(notes));
+    searchNotes(); // Обновляем отображение заметок после удаления
+}
+
+function copyToClipboard(text) {
+    console.log("Копируем текст:", text); // Отладочная информация
+
+    // Используем navigator.clipboard, если доступен
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+            console.log("Текст скопирован в буфер обмена");
+            showNotification();
+        }).catch(err => {
+            console.error('Ошибка при копировании текста: ', err);
+            fallbackCopyToClipboard(text); // Вызов запасного метода
+        });
+    } else {
+        fallbackCopyToClipboard(text); // Вызов запасного метода
+    }
+}
+
+function fallbackCopyToClipboard(text) {
+    const tempInput = document.createElement('textarea');
+    tempInput.value = text;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            console.log("Текст скопирован через execCommand");
+            showNotification();
+        } else {
+            console.error('Копирование не удалось');
+        }
+    } catch (err) {
+        console.error('Ошибка при копировании текста: ', err);
+    }
+    document.body.removeChild(tempInput);
+}
+
+function showNotification() {
+    const notification = document.getElementById('notification');
+    notification.style.display = 'block';
+    notification.style.opacity = 1;
+
+    setTimeout(() => {
+        notification.style.opacity = 0;
+        setTimeout(() => {
+            notification.style.display = 'none'; // Скрыть полностью после анимации
+        }, 500);
+    }, 2500);
+}
+
+
+
+function searchNotes() {
+    const searchValue = searchInput.value.toLowerCase();
+    const notes = JSON.parse(localStorage.getItem('notes')) || [];
+
+    // Фильтрация заметок по поисковому запросу
+    const filteredNotes = notes
+        .filter(note => note.text && note.text.toLowerCase().includes(searchValue))
+        .sort((a, b) => (b.isFavorite - a.isFavorite)); // Сортировка по избранному
+
+    currentSearchValue = searchInput.value; // Сохраняем текущее значение поиска
+
+    notesList.innerHTML = ''; // Очищаем список заметок для новой отрисовки
+    const noteBgColor = JSON.parse(localStorage.getItem('settings')).noteBgColor || '#ffffff';
+    const textColor = JSON.parse(localStorage.getItem('settings')).textColor || '#333333';
+
+    filteredNotes.forEach((note, index) => {
+        // Получаем исходный индекс заметки
+        const originalIndex = notes.indexOf(note);
+        const div = document.createElement('div');
+        div.className = 'note';
+        div.style.backgroundColor = noteBgColor;
+        div.style.color = textColor;
+        const isFavorite = note.isFavorite;
+        div.innerHTML = `
+            <div>${marked(note.text)}</div>
+            <div class="button-container">
+                <button onclick="toggleFavorite(${originalIndex}, this)" title="Избранное" class="favorite-button" style="position: absolute; top: 1px; right: 10px; background: none; border: none;">
+                   <span class="icon" style="color:${document.getElementById('textColor').value};">${isFavorite ? '★' : '☆'}</span>
+                </button>
+                <button class="edit-button" onclick="editNote(${originalIndex})" title="Редактировать">
+                    <span class="icon">✏️</span>
+                </button>
+     <button class="copy-button" onclick="copyToClipboard('${note.text.replace(/'/g, "\\'").replace(/"/g, '\\\'').replace(/`/g, '\\`').replace(/\n/g, '\\n')}')" title="Скопировать">
+    <span class="icon">📋</span>
+</button>
+                <button class="delete-button" onclick="deleteNote(${originalIndex})" title="Удалить">
+                    <span class="icon">🗑️</span>
+                </button>
+            </div>
+        `;
+        notesList.appendChild(div);
+    });
+
+    clearSearch.style.display = currentSearchValue ? 'block' : 'none';
+    // Скрываем контейнер, если заметок нет
+    notesContainer.style.display = filteredNotes.length > 0 ? 'block' : 'none';
+    updateStarColors(); // Обновляем цвет звезд
+}
+
+function deleteNote(index) {
+    const notes = JSON.parse(localStorage.getItem('notes'));
+    if (editingIndex === index) {
+        // Если удаляемая заметка - это редактируемая заметка
+        editingIndex = null; // Сбрасываем индекс редактируемой заметки
+        document.getElementById('noteInput').value = ''; // Очищаем поле ввода
+        document.querySelector('button[onclick="addNote()"]').style.display = 'block'; // Показываем кнопку «Добавить заметку»
+        document.querySelector('button[onclick="changeNote()"]').style.display = 'none'; // Скрываем кнопку «Изменить заметку»
+    }
+    notes.splice(index, 1);
+    localStorage.setItem('notes', JSON.stringify(notes));
+    renderNotes(); // Перерисовываем заметки
+}
+function clearSearchInput() {
+    searchInput.value = ''; // Очищаем поле поиска
+    currentSearchValue = ''; // Сбрасываем текущее значение поиска
+    renderNotes(); // Обновляем отображение заметок
+}
+
+function loadSettings() {
+    const settings = JSON.parse(localStorage.getItem('settings'));
+    if (settings) {
+        document.body.style.backgroundColor = settings.bgColor || '#f4f4f4';
+        document.body.style.color = settings.textColor || '#333';
+
+        document.getElementById('bgColor').value = settings.bgColor || '#f4f4f4';
+        document.getElementById('buttonColor').value = settings.buttonColor || '#4CAF50';
+        document.getElementById('noteBgColor').value = settings.noteBgColor || '#ffffff';
+        document.getElementById('textColor').value = settings.textColor || '#333333';
+        document.getElementById('buttonTextColor').value = settings.buttonTextColor || '#ffffff';
+
+        // Установите цвет h1
+        const h1Color = settings.h1Color || 'rgb(11,11,11)'; // Цвет по умолчанию
+        document.querySelector('h1').style.color = h1Color;
+
+        // Установите цвет текста модального окна
+        const modalContent = settingsModal.querySelector('.modal-content');
+        modalContent.style.color = h1Color; // Установка цвета текста для контента модального окна
+
+        // Установите цвет фона модального окна
+        settingsModal.style.backgroundColor = settings.bgColor || '#f4f4f4';
+        modalContent.style.backgroundColor = settings.bgColor || '#f4f4f4';
+
+        renderNotes();
+        changeButtonColor();
+        changeTextColor();
+        changeButtonTextColor();
+		changeNoteBackgroundColor()
+    }
+}
+
+    function saveSettings() {
+        const settings = {
+            bgColor: document.getElementById('bgColor').value,
+            buttonColor: document.getElementById('buttonColor').value,
+            noteBgColor: document.getElementById('noteBgColor').value,
+            textColor: document.getElementById('textColor').value,
+            buttonTextColor: document.getElementById('buttonTextColor').value,
+			h1Color: document.querySelector('h1').style.color // Сохранение цвета h1
+
+        };
+        localStorage.setItem('settings', JSON.stringify(settings));
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        renderNotes();
+        loadSettings(); 
+    });
+
+function changeBackgroundColor() {
+    const bgColor = document.getElementById('bgColor').value;
+    document.body.style.backgroundColor = bgColor;
+    const textColor = getContrastYIQ(bgColor);
+    document.querySelector('h1').style.color = textColor;
+    
+    document.body.style.color = textColor;
+
+    // Изменяем цвет фона окна настроек
+    settingsModal.style.backgroundColor = bgColor; // Изменение фона для модального окна
+    const modalContent = settingsModal.querySelector('.modal-content'); // Получаем элемент модального окна
+    modalContent.style.backgroundColor = bgColor; // Устанавливаем цвет фона для контента модального окна
+    modalContent.style.color = textColor; // Установка цвета текста для контента модального окна
+
+    saveSettings(); 
+}
+
+    function getContrastYIQ(hexcolor) {
+        var r = parseInt(hexcolor.substr(1, 2), 16);
+        var g = parseInt(hexcolor.substr(3, 2), 16);
+        var b = parseInt(hexcolor.substr(5, 2), 16);
+           // Инвертируем цвета
+    // Вычисляем яркость по формуле YIQ
+    var yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+
+    // Возвращаем черный или белый цвет в зависимости от яркости
+    return (yiq >= 128) ? '#000000' : '#FFFFFF';
+    }
+
+    function changeButtonColor() {
+    const buttonColor = document.getElementById('buttonColor').value;
+    const buttons = document.querySelectorAll('button:not(.copy-button)'); // Выбираем все кнопки, кроме кнопки "Копировать"
+    document.documentElement.style.setProperty('--button-color', buttonColor); // Обновление переменной CSS
+    
+    buttons.forEach(button => {
+        if (!button.classList.contains('delete-button') && !button.classList.contains('favorite-button') && !button.classList.contains('edit-button')) {
+            button.style.backgroundColor = buttonColor; // Меняем цвет фона только для кнопок, не являющихся "Удалить" и "Избранное"
+        }
+    });
+    
+    saveSettings();
+    }
+
+function changeNoteBackgroundColor() {
+    const noteBgColor = document.getElementById('noteBgColor').value;
+    const notes = document.querySelectorAll('.note');
+    notes.forEach(note => {
+        note.style.backgroundColor = noteBgColor;
+    });
+ // Сохранение нового цвета фона заметок в локальное хранилище
+    const settings = JSON.parse(localStorage.getItem('settings')) || {};
+    settings.noteBgColor = noteBgColor;
+    localStorage.setItem('settings', JSON.stringify(settings));
+    // Обновляем цвет звёздочек
+    const notesData = JSON.parse(localStorage.getItem('notes')) || [];
+    const textColor = document.getElementById('textColor').value; // Получаем текущий цвет текста
+    notesData.forEach((note, index) => {
+        const isFavorite = note.isFavorite;
+        const starButton = notes[index].querySelector('.favorite-button .icon');
+        starButton.style.color = document.getElementById('textColor').value;
+    });
+
+    saveSettings(); 
+}
+
+function changeTextColor() {
+    const textColor = document.getElementById('textColor').value;
+    const notes = document.querySelectorAll('.note div');
+    document.documentElement.style.setProperty('--note-text-color', textColor); // Обновление переменной CSS
+    const settings = JSON.parse(localStorage.getItem('settings')) || {};
+    settings.textColor = textColor;
+    localStorage.setItem('settings', JSON.stringify(settings));
+    notes.forEach(note => {
+        note.style.color = textColor;
+    });
+
+    // Обновляем цвет звёздочек
+    const notesData = JSON.parse(localStorage.getItem('notes')) || [];
+    const noteBgColor = document.getElementById('noteBgColor').value;
+
+    notesData.forEach((note, index) => {
+        const isFavorite = note.isFavorite;
+        const starButton = document.querySelectorAll('.favorite-button .icon')[index];
+        if (starButton) {
+            starButton.style.color = document.getElementById('textColor').value;
+        }
+    });
+
+    saveSettings(); 
+}
+
+function changeButtonTextColor() {
+    const buttonTextColor = document.getElementById('buttonTextColor').value;
+    const buttons = document.querySelectorAll('button');
+    buttons.forEach(button => {
+        button.style.color = buttonTextColor;
+    });
+
+    // Изменяем цвет текста для кнопок звёздочки и ведра
+    const favoriteButtons = document.querySelectorAll('.favorite-button .icon, .delete-button .icon, .edit-button .icon');
+    favoriteButtons.forEach(icon => {
+        icon.style.color = buttonTextColor; // Устанавливаем цвет текста для значков
+    });
+
+    saveSettings(); 
+}
+
+    function openModal() {
+        settingsModal.style.display = "block";
+    }
+
+    function closeModal() {
+        settingsModal.style.display = "none";
+    }
+
+function resetSettings() {
+    const defaultSettings = {
+        bgColor: '#f4f4f4',
+        buttonColor: '#4CAF50',
+        noteBgColor: '#ffffff',
+        textColor: '#333333',
+        buttonTextColor: '#ffffff',
+        h1Color: '#4CAF50'
+    };
+
+    document.body.style.backgroundColor = defaultSettings.bgColor;
+    document.body.style.color = defaultSettings.textColor;
+    document.querySelector('h1').style.color = defaultSettings.h1Color;
+
+    document.getElementById('bgColor').value = defaultSettings.bgColor;
+    document.getElementById('buttonColor').value = defaultSettings.buttonColor;
+    document.getElementById('noteBgColor').value = defaultSettings.noteBgColor;
+    document.getElementById('textColor').value = defaultSettings.textColor;
+    document.getElementById('buttonTextColor').value = defaultSettings.buttonTextColor;
+
+    // Обновляем цвет модального окна настроек
+    settingsModal.style.backgroundColor = defaultSettings.bgColor; // Обновлено
+
+    localStorage.removeItem('settings');
+
+    renderNotes();
+
+    changeButtonColor();
+    changeNoteBackgroundColor();
+    changeTextColor();
+    changeButtonTextColor();
+	changeBackgroundColor()
+}
+
+    document.getElementById('settingsIcon').onclick = openModal;
+	  document.addEventListener('DOMContentLoaded', () => {
+        renderNotes();
+    });
+    window.onclick = function (event) {
+        if (event.target == settingsModal) {
+            closeModal();
+        }
+    }
+</script>
+</body>
+</html>
