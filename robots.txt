@@ -1,0 +1,34 @@
+User-agent: *
+Allow: /
+Disallow: /auth
+Disallow: /regi
+Disallow: /_next/
+Disallow: /*.json$
+Disallow: /*?*
+Crawl-delay: 2
+
+# Партнерские и рекламные боты
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: AhrefsBot
+Crawl-delay: 5
+
+User-agent: SemrushBot
+Crawl-delay: 5
+
+# Яндкес
+User-agent: Yandex
+Allow: /
+Crawl-delay: 1
+Clean-param: ref /games/
+Host: kowkun-games.netlify.app
+
+# Google
+User-agent: Googlebot
+Allow: /
+Disallow: /auth
+Disallow: /regi
+Crawl-delay: 1
+
+Sitemap: https://kowkun-games.netlify.app/sitemap.xml
