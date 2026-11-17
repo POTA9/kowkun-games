@@ -3,7 +3,7 @@
 <meta charset="Utf-8">
     <link rel="icon" type="image/png" href="/kowkun-games/favicon.png" sizes="32x32" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-	<title>Лаберинт ДЯТЛОВА</title>
+	<title>Лабиринт ДЯТЛОВА</title>
 <style>
     html,
     * {
@@ -1829,6 +1829,7 @@ if (r <= 0) {
     setTimeout(() => {
         handleTurnChange();
     }, 100);
+    return; // <-- вот это добавить
 }
     
     let moved = false;
@@ -1913,6 +1914,9 @@ c = 99
 if (await checkWin()) {
     renderBoard();
     return;
+}
+if (!changedFloor) {
+    renderBoard();
 }
         // Проверяем смену хода (если ходы закончились после этого хода)
 if (r <= 0) {
@@ -2107,6 +2111,9 @@ c = 99
             renderBoard();
             return;
         }
+        if (!changedFloor) {
+    renderBoard();
+}
         
         // Проверяем смену хода (если ходы закончились после этого хода)
 if (r <= 0) {
